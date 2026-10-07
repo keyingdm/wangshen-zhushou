@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>网申助手 · 本地试用</title><link rel="stylesheet" href="../extension/styles.css"><link rel="stylesheet" href="demo.css"></head>
+<body class="demo">
+<div class="demo-top"><a href="index.html" class="demo-brand">申 · 网申助手</a><span>本地试用 / 使用虚构资料</span><a href="../extension/options.html" target="_blank">打开资料库 ↗</a></div>
+<div class="intro"><span class="eyebrow">少一点重复，多一点准备</span><h1>把资料准备好，<br>让每次网申轻松一点。</h1><p>在右侧检查字段与资料的对应关系，勾选后填入左侧表单。<br>这是一个完整的本地演示，使用与插件相同的识别和填写代码。</p></div>
+<div class="demo-layout">
+  <section class="form-panel"><div class="panel-top"><span class="step">01</span><h2>模拟企业网申</h2><span class="badge">不会发送</span></div>
+    <form id="application" autocomplete="off">
+      <fieldset data-section="基本信息"><legend>基本信息</legend>
+        <div class="form-item"><label for="full-name">姓名</label><input id="full-name" name="full_name" autocomplete="name" required></div>
+        <div class="form-item"><label for="mobile">手机号码</label><input id="mobile" name="mobile" type="tel" maxlength="11" autocomplete="tel"></div>
+        <div class="form-item"><label for="email">电子邮箱</label><input id="email" name="email" type="email" autocomplete="email"></div>
+        <fieldset class="field"><legend>性别</legend><label><input name="gender" type="radio" value="M"> 男</label><label><input name="gender" type="radio" value="F"> 女</label></fieldset>
+        <div class="form-item"><label for="birthday">出生日期</label><input id="birthday" type="date"></div>
+        <div class="form-item"><label for="id-number">身份证号码</label><input id="id-number" placeholder="敏感字段，需单独确认"></div>
+        <div class="form-item"><label for="verification">验证码</label><input id="verification" placeholder="插件会跳过"></div>
+        <div class="form-item"><label for="target-city">意向城市</label><input id="target-city" value="已有内容：请保留"></div>
+      </fieldset>
+      <fieldset data-section="教育经历"><legend>教育经历</legend>
+        <div class="form-item"><label for="school">学校名称</label><input id="school"></div>
+        <div class="form-item"><label for="major">所学专业</label><input id="major"></div>
+        <div class="form-item"><label for="qualification">学历</label><select id="qualification"><option value="">请选择</option><option value="undergraduate">大学本科</option><option value="master">硕士研究生</option></select></div>
+        <div class="form-item"><label for="edu-start">入学时间</label><input id="edu-start" type="month"></div>
+        <div class="form-item"><label for="edu-end">预计毕业时间</label><input id="edu-end" type="month"></div>
+      </fieldset>
+      <fieldset data-section="项目经历"><legend>项目经历</legend>
+        <div class="form-item"><label for="project-name">项目名称</label><input id="project-name"></div>
+        <div class="form-item"><label for="project-role">项目角色</label><input id="project-role"></div>
+        <div class="form-item"><label for="project-start">开始时间</label><input id="project-start" type="month"></div>
+        <div class="form-item"><label for="project-end">结束时间</label><input id="project-end" type="month"></div>
+        <div class="form-item"><label for="project-description">项目介绍</label><textarea id="project-description" rows="3"></textarea></div>
+        <div class="form-item"><label for="responsibilities">本人职责</label><textarea id="responsibilities" rows="3"></textarea></div>
+        <div class="form-item"><label for="results">项目成果</label><textarea id="results" rows="3" maxlength="50" placeholder="此处最多 50 字符，可测试超长拦截"></textarea></div>
+      </fieldset>
+      <div class="form-item"><label for="custom-school">自定义下拉框示例</label><div id="custom-school" role="combobox" tabindex="0" aria-label="院校联动选择">请在网页选择（通用版提示手动处理）</div></div>
+      <label><input type="checkbox" id="agreement"> 我确认已检查资料（插件不会勾选）</label>
+      <button class="primary" type="submit">模拟提交</button><p id="submit-state" class="muted">仅在这里演示提交行为。</p>
+    </form>
+  </section>
+  <section class="assistant-panel"><div class="panel-top"><span class="step">02</span><h2>识别、核对、填入</h2><button id="reset-demo" class="subtle">重置演示</button></div><iframe id="assistant" src="../extension/popup.html" title="网申助手操作面板"></iframe></section>
+</div>
+<div class="demo-bottom">真实使用时，通过 Chrome / Edge 的扩展图标打开同一个面板。示例姓名、电话和项目均为虚构。</div>
+<script src="../extension/schema.js"></script><script src="../extension/content.js"></script><script src="demo.js"></script>
+</body></html>

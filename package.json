@@ -1,0 +1,19 @@
+{
+  "name": "application-assistant",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Local-first Chrome / Edge application form assistant",
+  "scripts": {
+    "test": "node --test tests/schema.test.cjs tests/v2.test.cjs",
+    "test:browser": "node tests/browser.test.cjs",
+    "test:extension": "node tests/extension.test.cjs",
+    "test:v2": "node tests/new-version.browser.cjs",
+    "test:demo": "node tests/demo-v2.browser.cjs",
+    "package": "python tools/package_extension.py"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1",
+    "jszip": "3.10.1",
+    "pdf-lib": "1.17.1"
+  }
+}

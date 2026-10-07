@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>网申助手 · 资料库</title><link rel="stylesheet" href="styles.css"></head>
+<body class="options">
+  <header><div class="brand-icon">申</div><div><h1>你的求职资料库</h1><p>一次整理，反复使用。未提供的信息可以留空。</p></div><span class="badge">仅存本机</span></header>
+  <main>
+    <div class="toolbar sticky"><button id="save" class="primary">保存资料</button><button id="import" class="secondary">导入材料</button><button id="export" class="secondary">导出备份</button><button id="clear" class="subtle danger">清空资料与附件</button><span id="status" role="status" aria-live="polite">新版初始为空，材料由使用者导入。</span></div>
+    <div class="version-bar"><label>岗位版本 <select id="version"></select></label><input id="version-name" aria-label="资料版本名称" placeholder="资料版本名称"><button id="clone-version" class="secondary">复制为新版本</button><button id="blank-version" class="secondary">新建空版本</button><button id="remove-version" class="subtle danger">删除版本</button></div>
+    <div id="review" class="notice" hidden></div>
+    <div class="editor-layout"><nav id="nav"></nav><div id="editor"></div></div>
+    <section id="sources" class="editor-section"><h2>导入原文</h2><p class="muted">规则 / OCR 不保证全部识别正确。保留原文，方便复制、核对和补充。</p><div id="source-list"></div></section>
+    <section id="attachments" class="editor-section"><div class="section-head"><h2>电子附件库</h2><button id="add-attachment" class="secondary">选择附件</button></div><p class="muted">附件在本机保存，可下载 / 复制文件名。网站上传仍由你选择文件。JSON 备份包含清单，不包含文件本体。</p><div id="attachment-list"></div></section>
+    <section id="applications" class="editor-section"><h2>投递记录</h2><div id="application-list"></div></section>
+    <section id="ai-settings" class="editor-section"><h2>AI 精简设置</h2><p class="muted">兼容 Chat Completions 的接口。仅在点击“生成 AI 精简建议”时发送工作区文字，结果供人工核对。</p><div class="record editor-grid"><label>完整接口地址<input id="ai-endpoint" type="url" placeholder="https://你的服务/v1/chat/completions"></label><label>模型名称<input id="ai-model" placeholder="由服务商提供的模型名"></label><label class="wide">API Key<input id="ai-key" type="password" autocomplete="off" placeholder="在这里自行填写，不会导出到资料备份"></label><label class="wide inline-label"><input id="remember-key" type="checkbox"> 记住 Key（仅本机明文保存；不勾选时仅本次浏览器会话可用）</label><div class="toolbar wide"><button id="save-ai" class="primary">授权接口并保存配置</button><button id="clear-ai" class="subtle danger">清除 AI 配置与 Key</button><span id="ai-status" class="muted"></span></div></div></section>
+    <div class="footer">正文解析与 OCR 在本机运行。备份为明文，不包含 API Key 或附件本体。清空插件资料不删除磁盘上的备份和原始文件。</div>
+  </main>
+  <dialog id="import-dialog"><div class="section-head"><h2>先核对导入草稿</h2><button id="close-import" class="subtle">关闭</button></div><p id="import-status" role="status">仅在本机读取</p><div class="toolbar"><select id="import-mode" aria-label="导入方式"><option value="merge">补充当前版本（保留已有值，经历追加）</option><option value="replace">替换当前版本</option><option value="new">导入为新版本</option></select><label><input id="keep-files" type="checkbox" checked> 同时保留原文件到附件库</label><button id="apply-import" class="primary" disabled>确认并应用导入</button></div><div id="import-review" hidden><h3>提取原文</h3><select id="source-picker" aria-label="待导入材料"></select><textarea id="import-raw" rows="9" aria-label="提取原文"></textarea><div class="toolbar"><select id="assign-field" aria-label="原文对应资料字段"></select><button id="assign-selection" class="secondary">把选中原文放入该字段</button></div><p class="tiny muted">可以在原文中选中一段，再指定资料字段。下方可直接修改识别草稿、补充或删除记录。</p><div id="candidate-editor"></div></div></dialog>
+  <input id="file" type="file" multiple accept=".docx,.pdf,.txt,.md,.json,.png,.jpg,.jpeg,.webp,.bmp" hidden>
+  <input id="attachment-file" type="file" multiple hidden>
+  <label class="ocr-option"><input id="force-ocr" type="checkbox"> 导入 PDF 时每页 OCR（适合混合扫描材料；默认自动判断）</label>
+  <script src="vendor/jszip/jszip.min.js"></script><script src="vendor/ocr/tesseract.min.js"></script><script src="schema.js"></script><script src="storage.js"></script><script src="library.js"></script><script src="ai.js"></script><script src="importer.js"></script><script src="options.js"></script>
+</body></html>

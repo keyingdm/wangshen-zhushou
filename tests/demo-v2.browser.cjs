@@ -1,0 +1,24 @@
+const { chromium } = require('playwright');
+const { spawn } = require('node:child_process');
+const assert = require('node:assert/strict'), path = require('node:path');
+const ROOT = path.resolve(__dirname, '..'); let server, browser;
+(async () => {
+  server = spawn('python', [path.join(ROOT, 'tools/serve_demo.py'), '--port', '0'], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+  const base = await new Promise((resolve, reject) => { const timer = setTimeout(() => reject(Error('timeout')), 10000); server.stdout.on('data', data => { const m = data.toString().match(/http:\/\/127\.0\.0\.1:\d+/); if (m) { clearTimeout(timer); resolve(m[0]); } }); });
+  browser = await chromium.launch({ executablePath: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', headless: true });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } }); const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto(base + '/demo/v2.html'); const panel = page.frameLocator('iframe[title="网申助手新版面板"]');
+  await panel.locator('#cards').filter({ hasText: '资料库是空的' }).waitFor();
+  await page.getByRole('button', { name: '加载虚构示例资料', exact: true }).click(); await panel.locator('.quick-card').first().waitFor();
+  await page.locator('#name').click(); await panel.locator('#search').fill('基本资料 · 姓名'); await panel.locator('.quick-card').getByRole('button', { name: '插入', exact: true }).click(); await panel.locator('#status').filter({ hasText: '已插入' }).waitFor();
+  assert.equal(await page.locator('#name').inputValue(), '示例同学'); console.log('PASS new local demo begins empty, explicitly loads fiction and inserts into the selected field');
+  await panel.locator('#search').fill(''); await panel.locator('#tab-batch').click(); const batch = panel.frameLocator('#batch');
+  await batch.getByRole('button', { name: '① 识别当前页面', exact: true }).click(); await batch.locator('#status').filter({ hasText: '已识别' }).waitFor();
+  const province = batch.getByRole('checkbox', { name: '填写 籍贯省份', exact: true }); assert.equal(await province.isChecked(), true);
+  await batch.getByRole('button', { name: '② 填写已勾选项', exact: true }).click(); await batch.locator('#status').filter({ hasText: '已填写' }).waitFor();
+  assert.equal(await page.locator('#hometown-province').inputValue(), 'province-a'); assert.equal(await page.locator('#hometown-city').inputValue(), 'city-a'); assert.equal(await page.locator('#origin-province').inputValue(), 'province-a'); console.log('PASS native province / city fields stay separate across hometown, household and source region');
+  await page.locator('#nav button[data-section=education]').click(); await batch.getByRole('button', { name: '① 识别当前页面', exact: true }).click(); await batch.locator('#status').filter({ hasText: '已识别' }).waitFor(); assert.equal(await batch.getByRole('checkbox', { name: '填写 班级或年级综合排名', exact: true }).isChecked(), true); console.log('PASS screenshot-based education structure maps school, qualification, degree, mode and rank');
+  await panel.locator('#tab-quick').click(); await panel.locator('#category').selectOption('projects'); await page.locator('#nav button[data-section=projects]').click();
+  await page.screenshot({ path: path.join(ROOT, 'demo/新版界面预览.png'), fullPage: false });
+  assert.deepEqual(errors, []); console.log('PASS local preview and nested batch UI render without JavaScript errors');
+})().catch(e => { console.error(e); process.exitCode = 1; }).finally(async () => { await browser?.close(); server?.kill(); });

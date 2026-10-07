@@ -1,0 +1,133 @@
+// Uses Playwright from the configured runtime. Tests a fresh, isolated browser profile.
+const { chromium } = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const S = require('../extension/schema.js');
+const { spawn } = require('node:child_process');
+const ROOT = path.resolve(__dirname, '..');
+let server;
+async function baseURL() {
+  if (process.env.TEST_BASE) return process.env.TEST_BASE;
+  server = spawn('python', [path.join(ROOT, 'tools/serve_demo.py'), '--port', '0'], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(Error('Local test server timed out')), 10000);
+    server.stdout.on('data', chunk => { const url = chunk.toString().match(/http:\/\/127\.0\.0\.1:\d+/); if (url) { clearTimeout(timer); resolve(url[0]); } });
+    server.on('error', reject);
+    server.on('exit', code => { if (code) reject(Error(`Local test server exited: ${code}`)); });
+  });
+}
+
+(async () => {
+  const BASE = await baseURL();
+  const browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', headless: true });
+  const context = await browser.newContext({ viewport: { width: 1530, height: 1100 } });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  let checks = 0;
+  const pass = name => { checks++; console.log(`PASS ${name}`); };
+  try {
+    await page.goto(`${BASE}/demo/index.html`);
+    const popup = page.frameLocator('#assistant');
+    await popup.getByRole('button', { name: '① 识别当前页面' }).click();
+    await popup.locator('#status').filter({ hasText: '已识别' }).waitFor();
+    assert.equal(await popup.locator('.field-row').count(), 21);
+    const selected = await popup.locator('.field-row input[type=checkbox]:checked').count();
+    if (selected < 16) {
+      console.log(await popup.locator('.field-row').evaluateAll(rows => rows.filter(r => !r.querySelector('input').checked).map(r => ({ label: r.querySelector('strong').textContent, reason: r.querySelector('.field-note').textContent, value: r.querySelector('textarea').value }))));
+      console.log(await page.locator('#qualification').evaluate(el => [...el.options].map(o => ({label:o.textContent,value:o.value,disabled:o.disabled}))));
+    }
+    assert.ok(selected >= 16, `expected >= 16 auto-selected rows, got ${selected}`);
+    assert.equal(await popup.getByRole('checkbox', { name: '填写 验证码', exact: true }).isDisabled(), true);
+    assert.equal(await popup.getByRole('checkbox', { name: '填写 身份证号码', exact: true }).isChecked(), false);
+    assert.equal(await popup.getByRole('checkbox', { name: '填写 意向城市', exact: true }).isChecked(), false);
+    assert.equal(await popup.getByRole('checkbox', { name: '填写 姓名', exact: true }).isEnabled(), true);
+    pass('review selects confident fields and excludes OTP, sensitive and existing values');
+    await popup.getByRole('button', { name: '② 填写已勾选项' }).click();
+    await popup.locator('#status').filter({ hasText: '已填写' }).waitFor();
+    assert.equal(await page.locator('#full-name').inputValue(), '示例同学');
+    assert.equal(await page.locator('#school').inputValue(), '示例理工大学');
+    assert.equal(await page.locator('#qualification').inputValue(), 'undergraduate');
+    assert.equal(await page.locator('#edu-start').inputValue(), '2023-09');
+    assert.equal(await page.locator('#project-start').inputValue(), '2024-09');
+    assert.equal(await page.locator('input[name=gender][value=M]').isChecked(), true);
+    assert.equal(await page.locator('#target-city').inputValue(), '已有内容：请保留');
+    assert.equal(await page.locator('#results').inputValue(), '');
+    assert.equal(await page.locator('#agreement').isChecked(), false);
+    assert.equal(await page.locator('#submit-state').textContent(), '仅在这里演示提交行为。');
+    pass('fills native controls, dates and radio without submitting or truncating');
+    await page.locator('#full-name').fill('后来手动修改');
+    await popup.getByRole('button', { name: '撤销上次填写' }).click();
+    await popup.locator('#status').filter({ hasText: '已撤销' }).waitFor();
+    assert.equal(await page.locator('#full-name').inputValue(), '后来手动修改');
+    assert.equal(await page.locator('#school').inputValue(), '');
+    assert.equal(await page.locator('input[name=gender][value=M]').isChecked(), false);
+    pass('undo restores original controls and preserves later user edits');
+    // Test stale snapshots, framework event delivery, same-origin frames, shadow roots, and re-render.
+    const direct = await context.newPage();
+    await direct.goto(`${BASE}/extension/options.html`);
+    await direct.setContent(`<fieldset data-section="基本信息"><legend>基本信息</legend><label for="n">姓名</label><input id="n"><label for="e">邮箱</label><input id="e" type="email"><input id="secret" type="password"><input id="file" type="file"><input id="hidden" type="hidden"><label for="tiny">内容</label><textarea id="tiny" maxlength="3"></textarea></fieldset><div id="shadow"></div><iframe id="same"></iframe>`);
+    await direct.evaluate(() => {
+      document.querySelector('#shadow').attachShadow({ mode: 'open' }).innerHTML = '<label for="s">姓名</label><input id="s">';
+      document.querySelector('#same').contentDocument.body.innerHTML = '<label for="f">姓名</label><input id="f">';
+      window.eventCounts = { input: 0, change: 0 };
+      document.querySelector('#n').addEventListener('input', () => window.eventCounts.input++);
+      document.querySelector('#n').addEventListener('change', () => window.eventCounts.change++);
+    });
+    await direct.addScriptTag({ path: path.join(ROOT, 'extension/schema.js') });
+    await direct.addScriptTag({ path: path.join(ROOT, 'extension/content.js') });
+    let snapshot = await direct.evaluate(() => ApplicationAgent.scan());
+    assert.equal(snapshot.fields.length, 5);
+    pass('scan reaches same-origin iframe and open shadow root while excluding password, upload and hidden inputs');
+    const build = (f, value) => ({ uid: f.uid, before: f.current, fingerprint: S.fingerprint(f), value });
+    const nameField = snapshot.fields.find(f => f.id === 'n');
+    await direct.locator('#n').fill('网页新内容');
+    let result = await direct.evaluate(p => ApplicationAgent.fill(p), { session: snapshot.session, items: [build(nameField, '旧计划')], overwrite: true });
+    assert.equal(result.results[0].ok, false);
+    assert.equal(await direct.locator('#n').inputValue(), '网页新内容');
+    pass('stale snapshot refuses changed field content even when overwrite is enabled');
+    snapshot = await direct.evaluate(() => ApplicationAgent.scan());
+    const n = snapshot.fields.find(f => f.id === 'n');
+    result = await direct.evaluate(p => ApplicationAgent.fill(p), { session: snapshot.session, items: [build(n, '新计划')], overwrite: false });
+    assert.equal(result.results[0].ok, false);
+    result = await direct.evaluate(p => ApplicationAgent.fill(p), { session: snapshot.session, items: [build(n, '新计划')], overwrite: true });
+    assert.equal(result.results[0].ok, true);
+    assert.equal(await direct.locator('#n').inputValue(), '新计划');
+    const eventCounts = await direct.evaluate(() => window.eventCounts);
+    assert.ok(eventCounts.input >= 1 && eventCounts.change >= 1);
+    pass('overwrite requires explicit opt-in and dispatches input / change events');
+    snapshot = await direct.evaluate(() => ApplicationAgent.scan());
+    const email = snapshot.fields.find(f => f.id === 'e');
+    result = await direct.evaluate(p => ApplicationAgent.fill(p), { session: snapshot.session, items: [build(email, 'invalid-email')] });
+    assert.equal(result.results[0].ok, false); assert.equal(await direct.locator('#e').inputValue(), '');
+    const tiny = snapshot.fields.find(f => f.id === 'tiny');
+    result = await direct.evaluate(p => ApplicationAgent.fill(p), { session: snapshot.session, items: [build(tiny, 'too long')] });
+    assert.equal(result.results[0].ok, false); assert.equal(await direct.locator('#tiny').inputValue(), '');
+    pass('website validity and maxlength failures leave field unchanged');
+    await direct.locator('#e').evaluate(el => { el.addEventListener('input', () => { el.value = ''; }); });
+    snapshot = await direct.evaluate(() => ApplicationAgent.scan());
+    result = await direct.evaluate(p => ApplicationAgent.fill(p), { session: snapshot.session, items: [build(snapshot.fields.find(f => f.id === 'e'), 'test@example.com')] });
+    assert.equal(result.results[0].ok, false);
+    pass('framework rejection is reported instead of false success');
+    const blank = S.emptyProfile();
+    assert.equal(S.entries(blank).every(e => !e.value), true);
+    pass('new profile begins empty without automatically importing local resumes');
+    await page.reload();
+    await popup.getByRole('button', { name: '① 识别当前页面' }).click();
+    await popup.locator('#status').filter({ hasText: '已识别' }).waitFor();
+    await page.screenshot({ path: path.join(ROOT, 'demo/演示截图.png'), fullPage: true });
+    assert.deepEqual(errors, []);
+    pass('demo renders without JavaScript errors');
+    const options = await context.newPage(); await options.goto(`${BASE}/extension/options.html`);
+    await options.getByRole('textbox', { name: '基本资料 姓名', exact: true }).fill('资料库测试');
+    await options.getByRole('button', { name: '保存资料', exact: true }).click();
+    await options.reload();
+    assert.equal(await options.getByRole('textbox', { name: '基本资料 姓名', exact: true }).inputValue(), '资料库测试');
+    pass('profile editor persists changes');
+    const forbidden = await context.request.get(`${BASE}/个人资料/模拟用户_网申资料.json`);
+    assert.equal(forbidden.status(), 404);
+    pass('local demo server does not expose personal profile');
+    console.log(`Browser scenarios passed: ${checks}`);
+  } finally { await browser.close(); server?.kill(); }
+})().catch(error => { server?.kill(); console.error(error); process.exitCode = 1; });

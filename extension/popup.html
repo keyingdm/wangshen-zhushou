@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>网申助手</title><link rel="stylesheet" href="styles.css"></head>
+<body class="popup">
+  <header><div class="brand-icon">申</div><div><h1>网申助手 <span class="badge">本地版</span></h1><p>准备一次资料，轻松填写每次申请。</p></div><button id="edit" class="subtle">管理资料 ↗</button></header>
+  <main>
+    <div id="welcome" class="notice" hidden>先由你导入材料，再核对填写。<button id="import" class="secondary">导入 JSON 资料</button></div>
+    <div class="selectors" id="selectors"></div>
+    <div class="toolbar"><button id="scan" class="primary">① 识别当前页面</button><button id="fill" class="primary" disabled>② 填写已勾选项</button><button id="undo" class="secondary" disabled>撤销上次填写</button><button id="remember" class="subtle" disabled>记住对应关系</button></div>
+    <div class="settings"><label><input id="overwrite" type="checkbox"> 覆盖已有内容</label><label>文本日期格式 <select id="date-style"><option value="dash">2024-03</option><option value="dot">2024.03</option><option value="slash">2024/03</option></select></label><button id="diagnostic" class="subtle" disabled>导出字段诊断</button></div>
+    <p id="status" role="status" aria-live="polite">打开网申页面后，点击“识别当前页面”。</p>
+    <div id="summary" class="summary"></div>
+    <div id="rows" class="rows"><div class="empty"><div class="empty-icon">↳</div><h2>把重复填写的时间省下来</h2><p>识别字段 → 检查对应 → 批量填入<br>资料缺失或无法识别的字段，随时手动校正。</p></div></div>
+    <div class="footer">资料仅存本机 · 不自动提交 · 原生控件优先 · 最终请检查网页保存结果</div>
+  </main>
+  <input id="file" type="file" accept=".json,application/json" hidden>
+  <script src="schema.js"></script><script src="storage.js"></script><script src="library.js"></script><script src="popup.js"></script>
+</body></html>

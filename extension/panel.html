@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>网申助手 · 悬浮面板</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="panel.css"></head>
+<body class="side-panel">
+<header><div class="brand-icon">申</div><div><h1>网申助手 <span class="badge">0.2</span></h1><p>点击网页输入框，再复制或插入资料</p></div><button id="manage" class="subtle">资料库 ↗</button></header>
+<main>
+  <div class="profile-picker"><select id="profile" aria-label="岗位资料版本"></select><button id="import-materials" class="secondary">导入材料</button></div>
+  <div class="tabbar"><button id="tab-quick" class="selected">复制 / 插入</button><button id="tab-batch">识别批量填写</button></div>
+  <p id="status" role="status" aria-live="polite">使用者自行导入材料，核对后使用。</p>
+  <div id="quick-view">
+    <div class="target-box"><strong id="target">目标：先点击网页输入框</strong><select id="insert-mode" aria-label="插入方式"><option value="replace">替换整个字段</option><option value="cursor">插入光标 / 替换选中内容</option></select><button id="quick-undo" class="subtle">撤销上次填写</button></div>
+    <input id="search" type="search" placeholder="搜索姓名、学校、项目或内容" aria-label="搜索资料">
+    <select id="category" aria-label="资料分类"><option value="">全部分类</option></select>
+    <div id="cards" class="quick-cards"></div>
+    <details id="workbench" class="workbench"><summary>编辑与 AI 精简工作区</summary>
+      <textarea id="draft" rows="6" aria-label="当前编辑内容" placeholder="点击资料卡上的“编辑”，或直接输入临时文字"></textarea><div id="count" class="muted">0 字符</div>
+      <div class="toolbar"><button id="draft-copy" class="secondary">复制</button><button id="draft-insert" class="primary">插入</button></div>
+      <label class="ai-limit">目标字符数 <input id="limit" type="number" min="20" max="5000" value="300"></label>
+      <p class="muted tiny">仅发送上面这段文字到你配置的 AI 接口。结果先核对，再采用。</p>
+      <button id="ai-shorten" class="secondary">生成 AI 精简建议</button><button id="ai-cancel" class="subtle" hidden>取消</button>
+      <textarea id="ai-result" rows="5" aria-label="AI 精简建议" placeholder="精简结果，不会自动填入网页或资料库"></textarea><button id="ai-adopt" class="secondary">采用到工作区</button>
+    </details>
+    <details class="application-note"><summary>记录本次投递</summary><input id="company" placeholder="公司" aria-label="投递公司"><input id="job" placeholder="岗位" aria-label="投递岗位"><select id="application-status" aria-label="投递状态"><option>准备中</option><option>已投递</option><option>笔试</option><option>面试</option><option>录用</option><option>未通过</option></select><input id="application-date" type="date" aria-label="投递日期"><button id="save-application" class="secondary">保存投递记录</button><p class="tiny muted">状态由你选择，填入资料不会自动记为已投递。</p></details>
+  </div>
+  <iframe id="batch" title="批量识别面板" hidden></iframe>
+</main>
+<script src="schema.js"></script><script src="storage.js"></script><script src="library.js"></script><script src="ai.js"></script><script src="panel.js"></script>
+</body></html>

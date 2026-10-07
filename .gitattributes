@@ -1,0 +1,6 @@
+* text=auto
+extension/vendor/** -text
+*.png binary
+*.wasm binary
+*.traineddata binary
+*.zip binary
