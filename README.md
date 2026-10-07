@@ -82,4 +82,6 @@ python tools/package_extension.py
 
 开发资源包名为 `@keyingdm/wangshen-zhushou`，注册表为 `https://npm.pkg.github.com`；内容是插件文件与文档，日常安装仍使用 Releases ZIP。正式 Release 发布后，工作流检查版本一致与分发文件白名单，再用临时 GITHUB_TOKEN 发布同版本 npm 包。
 
+`0.3.0` 已发布，可查看 [Packages 发布运行记录](https://github.com/keyingdm/wangshen-zhushou/actions/runs/37596055605) 与 [发布核验](验证记录.md)。
+
 GitHub npm 包安装需要认证，首次发布默认私有，可在 Package settings 调整可见性。具体使用方式见教程第 13 节和 [GitHub 官方说明](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry)。
