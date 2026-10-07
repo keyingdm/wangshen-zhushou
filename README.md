@@ -1,4 +1,4 @@
-# 网申助手 · Application Assistant
+# 网申助手
 
 用于 Chrome / Edge 的本地网申填写扩展。自行导入材料，核对后通过网页右侧面板复制、光标插入或批量填写。
 
@@ -6,7 +6,7 @@
 
 ## 下载与安装
 
-1. 打开 [Releases 下载页](https://github.com/keyingdm/application-assistant/releases/latest)，下载 Assets 中的 `chrome-edge-extension-v0.2.0.zip`，解压到固定文件夹。
+1. 打开 [Releases 下载页](https://github.com/keyingdm/wangshen-zhushou/releases/latest)，下载 Assets 中的 `chrome-edge-extension-v0.2.0.zip`，解压到固定文件夹。
 2. Chrome 打开 `chrome://extensions`；Edge 打开 `edge://extensions`。
 3. 开启开发者模式，点击“加载已解压的扩展程序”，选择解压后包含 `manifest.json` 的文件夹。
 4. 在浏览器工具栏固定“网申助手”。打开网申网页，点击图标即可打开右侧面板。
