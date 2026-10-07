@@ -1,12 +1,17 @@
 (async function () {
   const L = ApplicationLibrary, S = ApplicationSchema;
+  let width = await ApplicationStorage.get('panelWidth', 374);
   if (!localStorage.getItem('application-demo:library')) await ApplicationStorage.set('library', L.emptyLibrary());
   const host = document.createElement('div'); host.setAttribute('data-application-helper', 'true');
-  Object.assign(host.style, { position: 'fixed', right: '0', top: '0', width: '374px', height: '100vh', zIndex: '10000' });
+  Object.assign(host.style, { position: 'fixed', right: '0', top: '0', width: `${width}px`, height: '100vh', zIndex: '10000' });
   const frame = document.createElement('iframe'); frame.src = '../extension/panel.html'; frame.title = '网申助手新版面板'; frame.allow = 'clipboard-write'; Object.assign(frame.style, { width: '100%', height: '100%', border: '0', boxShadow: '-4px 0 25px #11352a1a' });
   const button = document.createElement('button'); button.textContent = '收起助手'; Object.assign(button.style, { position: 'absolute', left: '-35px', top: '100px', width: '35px', writingMode: 'vertical-rl', padding: '13px 8px', color: 'white', background: '#126e65' });
-  button.onclick = () => { const folded = host.style.width !== '0px'; host.style.width = folded ? '0px' : '374px'; frame.hidden = folded; button.textContent = folded ? '打开助手' : '收起助手'; document.body.style.paddingRight = folded ? '25px' : '400px'; };
-  function bridge() { frame.contentWindow.ApplicationDemoBridge = (action, payload) => action === 'scan' ? ApplicationAgent.scan(document.getElementById('form')) : ApplicationAgent[action](payload); }
+  document.body.style.paddingRight = `${width + 26}px`;
+  button.onclick = () => { const folded = host.style.width !== '0px'; host.style.width = folded ? '0px' : `${width}px`; frame.hidden = folded; button.textContent = folded ? '打开助手' : '收起助手'; document.body.style.paddingRight = folded ? '25px' : `${width + 26}px`; };
+  function bridge() { frame.contentWindow.ApplicationDemoBridge = (action, payload) => {
+    if (action === 'resize') { width = Math.max(280, Math.min(Number(payload.width) || 374, 600, innerWidth - 48)); host.style.width = `${width}px`; document.body.style.paddingRight = `${width + 26}px`; return { width }; }
+    return action === 'scan' ? ApplicationAgent.scan(document.getElementById('form')) : ApplicationAgent[action](payload);
+  }; }
   frame.addEventListener('load', bridge); host.append(frame, button); document.body.append(host);
   document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { document.querySelectorAll('#form>fieldset').forEach(f => { f.hidden = f.id !== b.dataset.section; }); document.querySelectorAll('#nav button').forEach(n => n.classList.toggle('active', n === b)); });
   document.getElementById('sample').onclick = async () => {

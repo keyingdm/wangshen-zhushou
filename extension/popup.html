@@ -9,6 +9,7 @@
     <div class="settings"><label><input id="overwrite" type="checkbox"> 覆盖已有内容</label><label>文本日期格式 <select id="date-style"><option value="dash">2024-03</option><option value="dot">2024.03</option><option value="slash">2024/03</option></select></label><button id="diagnostic" class="subtle" disabled>导出字段诊断</button></div>
     <p id="status" role="status" aria-live="polite">打开网申页面后，点击“识别当前页面”。</p>
     <div id="summary" class="summary"></div>
+    <section class="pending-panel" aria-label="待处理清单"><div class="toolbar"><button id="check-pending" class="secondary">检查待处理项</button><label><input id="only-pending" type="checkbox"> 只看待处理</label></div><p id="pending-summary" role="status">识别后列出当前可见字段中的缺项、超长内容和手动处理项。</p><div id="pending-list"></div></section>
     <div id="rows" class="rows"><div class="empty"><div class="empty-icon">↳</div><h2>把重复填写的时间省下来</h2><p>识别字段 → 检查对应 → 批量填入<br>资料缺失或无法识别的字段，随时手动校正。</p></div></div>
     <div class="footer">资料仅存本机 · 不自动提交 · 原生控件优先 · 最终请检查网页保存结果</div>
   </main>

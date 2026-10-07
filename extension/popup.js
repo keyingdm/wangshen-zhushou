@@ -39,6 +39,7 @@
     $('undo').disabled = busy || !snapshot?.undoAvailable;
     $('remember').disabled = busy || !snapshot;
     $('diagnostic').disabled = busy || !snapshot;
+    $('check-pending').disabled = busy;
     $('edit').disabled = busy;
     $('rows').inert = busy;
     $('selectors').inert = busy;
@@ -61,7 +62,22 @@
       if (p.checked && ready.ok) count++;
     }
     $('summary').textContent = snapshot ? `共 ${plan.length} 个可见字段 · 已选 ${count} 项${snapshot.inaccessibleFrames ? ` · ${snapshot.inaccessibleFrames} 个跨域框架需手动处理` : ''}` : '';
+    refreshPending();
     controls();
+  }
+  function pendingReasons(p) {
+    const reasons = []; if (p.field.required && p.field.empty) reasons.push('必填未处理');
+    if (p.field.maxLength > 0 && (p.field.empty ? p.value : p.field.current).length > p.field.maxLength) reasons.push(`超过 ${p.field.maxLength} 字符`);
+    if (p.field.empty && (p.field.unsupported || S.blocked(p.field))) reasons.push('需网页手动处理');
+    if (p.field.required && p.field.empty && !p.value) reasons.push('缺少对应资料');
+    return reasons;
+  }
+  function refreshPending() {
+    const pending = plan.map(p => ({ p, reasons: pendingReasons(p) })).filter(item => item.reasons.length);
+    $('pending-list').replaceChildren();
+    for (const { p, reasons } of pending) { const button = node('button', 'pending-item', `${p.field.label}：${reasons.join(' · ')} ↗`); button.onclick = () => task(async () => { const result = await run('locate', { session: snapshot.session, uid: p.field.uid, fingerprint: S.fingerprint(p.field) }); status(`已定位“${result.label}”，请在网页检查或填写。`); }); $('pending-list').append(button); }
+    $('pending-summary').textContent = snapshot ? `当前可见字段有 ${pending.length} 项待处理${snapshot.inaccessibleFrames ? `；另有 ${snapshot.inaccessibleFrames} 个跨域框架需手动检查` : ''}。隐藏栏目请展开后重新识别。` : '先识别当前页面。';
+    for (const p of plan) if (p.row) p.row.hidden = $('only-pending').checked && !pendingReasons(p).length;
   }
   function selectors() {
     $('selectors').replaceChildren();
@@ -100,6 +116,7 @@
     const allEntries = S.entries(profile);
     for (const p of plan) {
       const row = node('article', 'field-row');
+      p.row = row;
       const head = node('div', 'field-head'), checkbox = node('input'); checkbox.type = 'checkbox'; checkbox.setAttribute('aria-label', `填写 ${p.field.label}`);
       p.checkbox = checkbox;
       checkbox.addEventListener('change', () => { p.checked = checkbox.checked; refreshSummary(); });
@@ -136,6 +153,8 @@
     status('正在识别字段…'); snapshot = await run('scan'); await buildPlan();
     status(`已识别“${snapshot.title || '当前页面'}”。检查内容后再填写；新增经历块后请重新识别。`);
   }));
+  $('check-pending').onclick = () => task(async () => { snapshot = await run('scan'); await buildPlan(); status('已重新检查当前可见字段。点击待处理项可定位到网页输入框。'); });
+  $('only-pending').onchange = refreshPending;
   $('fill').addEventListener('click', () => task(async () => {
     const items = plan.filter(p => p.checked && readyFor(p).ok).map(p => ({ uid: p.field.uid, value: p.value, before: p.field.current, fingerprint: S.fingerprint(p.field), isDate: Boolean(entryFor(p.path)?.date) }));
     if (!items.length) return;

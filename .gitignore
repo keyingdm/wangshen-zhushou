@@ -1,6 +1,7 @@
 node_modules/
 tests/fixtures/
 demo/演示截图.png
+demo/新版悬浮面板.png
 个人资料/
 materials/
 exports/
@@ -10,3 +11,5 @@ __pycache__/
 .browser-profile/
 .env
 .env.*
+.build/
+*.tgz

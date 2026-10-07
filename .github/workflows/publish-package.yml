@@ -1,0 +1,63 @@
+name: Publish GitHub Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '已发布的版本标签，例如 v0.3.0'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: packages-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'keyingdm/wangshen-zhushou'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          registry-url: https://npm.pkg.github.com
+          scope: '@keyingdm'
+      - name: Verify published release and matching versions
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node <<'NODE'
+          const p = require('./package.json'), m = require('./extension/manifest.json');
+          if (process.env.RELEASE_TAG !== `v${p.version}` || p.version !== m.version || p.name !== '@keyingdm/wangshen-zhushou') throw Error('版本或包名不一致');
+          NODE
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("需要正式发布版本") else . end'
+      - name: Inspect distribution contents
+        run: |
+          npm pack --dry-run --json > package-files.json
+          node <<'NODE'
+          const result = require('./package-files.json'), p = Array.isArray(result) ? result[0] : result['@keyingdm/wangshen-zhushou'];
+          if (!p) throw Error('npm 未返回预期的分发包');
+          const paths = p.files.map(f => f.path);
+          const required = ['extension/manifest.json', 'extension/help.html', 'extension/vendor/ocr/lang/chi_sim.traineddata', 'extension/THIRD_PARTY.md', 'CHANGELOG.md'];
+          if (required.some(f => !paths.includes(f)) || paths.some(f => !/^(extension\/|README\.md$|使用说明\.md$|CHANGELOG\.md$|package\.json$)/.test(f))) throw Error('分发文件不符合白名单');
+          NODE
+      - name: Publish version
+        run: npm publish --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Record publication
+        run: |
+          echo 'Published @keyingdm/wangshen-zhushou from the verified release tag.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Chrome / Edge users should download the ZIP from Releases.' >> "$GITHUB_STEP_SUMMARY"

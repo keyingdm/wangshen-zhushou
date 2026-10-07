@@ -12,6 +12,10 @@ globalThis.ApplicationStorage = {
     if (globalThis.chrome?.storage?.local) await chrome.storage.local.remove(key);
     else localStorage.removeItem(`application-demo:${key}`);
   },
+  async clearPanelStates() {
+    if (globalThis.chrome?.storage?.local) { const values = await chrome.storage.local.get(null); await chrome.storage.local.remove(Object.keys(values).filter(key => key.startsWith('panelState:'))); }
+    else for (const key of Object.keys(localStorage)) if (key.startsWith('application-demo:panelState:')) localStorage.removeItem(key);
+  },
   download(name, value) {
     const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = name; link.click();

@@ -203,12 +203,25 @@
   function focused() {
     if (!focusedRecord?.el?.isConnected || !visible(focusedRecord.el)) return null;
     const field = describe(focusedRecord);
-    return { label: field.label, type: field.type, unsupported: field.unsupported, blocked: S.blocked(field) };
+    return { ...field, selectionStart: selection.start, selectionEnd: selection.end, blocked: S.blocked(field) };
+  }
+  function locate(payload) {
+    if (payload?.session !== pageSession) throw Error('页面已刷新，请重新识别。');
+    const record = registry.get(payload.uid);
+    if (!record || !visible(record.el)) throw Error('字段已变化，请重新识别。');
+    const field = describe(record);
+    if (S.fingerprint(field) !== payload.fingerprint) throw Error('字段已变化，请重新识别。');
+    const el = record.elements?.[0] || record.el;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.focus({ preventScroll: true });
+    const old = el.style.outline; el.style.outline = '3px solid #169789';
+    setTimeout(() => { if (el.style.outline === 'rgb(22, 151, 137) solid 3px' || el.style.outline === '3px solid rgb(22, 151, 137)') el.style.outline = old; }, 1800);
+    return { label: field.label };
   }
   async function insertFocused(payload) {
     const record = focusedRecord;
     if (!record?.el?.isConnected || !visible(record.el)) throw Error('先点击网页中要填写的输入框，再点“插入”。');
     const field = describe(record);
+    if (payload?.targetUid && payload.targetUid !== field.uid) throw Error('目标输入框已改变，请先核对新的推荐内容');
     if (S.blocked(field) || field.unsupported) throw Error(field.unsupported || '该字段需要在网页手动处理');
     let value = String(payload?.value || '');
     if (!value) throw Error('资料为空');
@@ -223,6 +236,6 @@
     return { label: field.label, undoAvailable: result.undoAvailable };
   }
   track(document, 'main');
-  globalThis.ApplicationAgent = { scan, fill, undo, focused, insertFocused };
+  globalThis.ApplicationAgent = { scan, fill, undo, focused, insertFocused, locate };
   scan(); // Register focus tracking in accessible child frames before the first insertion.
 })();

@@ -122,6 +122,7 @@ async function baseURL() {
     const options = await context.newPage(); await options.goto(`${BASE}/extension/options.html`);
     await options.getByRole('textbox', { name: '基本资料 姓名', exact: true }).fill('资料库测试');
     await options.getByRole('button', { name: '保存资料', exact: true }).click();
+    await options.locator('#status').filter({ hasText: '资料、附件清单和投递记录已保存' }).waitFor();
     await options.reload();
     assert.equal(await options.getByRole('textbox', { name: '基本资料 姓名', exact: true }).inputValue(), '资料库测试');
     pass('profile editor persists changes');

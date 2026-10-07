@@ -9,7 +9,8 @@ chrome.action.onClicked.addListener(async tab => {
     bindings[tab.id] = { nonce, origin: new URL(tab.url).origin };
     await chrome.storage.session.set({ panelBindings: bindings });
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['schema.js', 'content.js', 'overlay.js'] });
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: config => ApplicationOverlay.show(config), args: [{ url: chrome.runtime.getURL('panel.html'), tabId: tab.id, nonce }] });
+    const width = (await chrome.storage.local.get('panelWidth')).panelWidth || 374;
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: config => ApplicationOverlay.show(config), args: [{ url: chrome.runtime.getURL('panel.html'), tabId: tab.id, nonce, width }] });
     await chrome.action.setBadgeText({ tabId: tab.id, text: '' });
   } catch {
     await chrome.action.setBadgeText({ tabId: tab.id, text: '!' });
@@ -31,9 +32,10 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (!binding || binding.nonce !== message.nonce || senderURL.searchParams.get('nonce') !== binding.nonce || senderURL.searchParams.get('tab') !== String(tabId) || (sender.tab && sender.tab.id !== tabId)) throw Error('面板未绑定当前标签页，请点击工具栏重新打开');
     const tab = await chrome.tabs.get(tabId);
     if (!tab.url || new URL(tab.url).origin !== binding.origin) throw Error('已切换网站，请点击工具栏重新打开面板');
-    if (!['scan', 'fill', 'undo', 'focused', 'insertFocused'].includes(message.action)) throw Error('不支持的操作');
+    if (!['scan', 'fill', 'undo', 'focused', 'insertFocused', 'locate', 'resize'].includes(message.action)) throw Error('不支持的操作');
     const results = await chrome.scripting.executeScript({ target: { tabId }, func: async (action, payload) => {
       try {
+        if (action === 'resize') return { ok: true, value: ApplicationOverlay.resize(payload.width) };
         if (!globalThis.ApplicationAgent) throw Error('页面已刷新，请点击工具栏重新打开面板');
         return { ok: true, value: await ApplicationAgent[action](payload) };
       } catch (error) { return { ok: false, error: error.message || '页面拒绝操作' }; }
