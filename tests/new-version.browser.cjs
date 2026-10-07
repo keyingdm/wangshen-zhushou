@@ -39,10 +39,29 @@ async function baseURL() {
   await options.goto(`${prefix}/options.html`);
   assert.equal(await options.getByRole('textbox', { name: '基本资料 姓名', exact: true }).inputValue(), '');
   pass('fresh extension starts empty and offers user-selected material import');
+  await options.evaluate(async () => {
+    const library = ApplicationLibrary.emptyLibrary();
+    library.profiles[0].profile.declarations = { relativeAvoidance: '否', examCity1: '示例考试城市' };
+    await ApplicationStorage.set('library', library);
+  });
+  await options.reload(); assert.equal(await options.locator('#profile-declarations').count(), 0);
+  await options.getByRole('textbox', { name: '基本资料 现居城市', exact: true }).fill('示例居住城市');
+  await options.locator('#status').filter({ hasText: '已自动保存' }).waitFor();
+  const download = await Promise.all([options.waitForEvent('download'), options.locator('#export').click()]).then(([file]) => file);
+  const oldBackup = fs.readFileSync(await download.path());
+  assert.equal(JSON.parse(oldBackup).profiles[0].profile.declarations.examCity1, '示例考试城市');
+  pass('old declaration values survive autosave and actual JSON export while their editor is absent');
+  await options.locator('#file').setInputFiles({ name: '虚构旧备份.json', mimeType: 'application/json', buffer: oldBackup });
+  await options.locator('#apply-import:not([disabled])').waitFor(); options.once('dialog', dialog => dialog.accept());
+  await options.locator('#apply-import').click(); await options.locator('#import-dialog').waitFor({ state: 'hidden' });
+  assert.equal(await options.locator('#profile-declarations').count(), 0);
+  assert.equal((await options.evaluate(() => ApplicationLibrary.load())).profiles[0].profile.declarations.relativeAvoidance, '否');
+  pass('restoring a legacy backup preserves hidden values without recreating the removed section');
   await options.locator('#file').setInputFiles(path.join(fixtures, '虚构简历.docx'));
   await options.locator('#apply-import').waitFor({ state: 'visible' }); await options.locator('#apply-import:not([disabled])').waitFor();
   assert.equal(await options.getByRole('textbox', { name: '草稿 基本资料 姓名', exact: true }).inputValue(), '示例同学');
   assert.equal(await options.getByRole('textbox', { name: '基本资料 姓名', exact: true }).inputValue(), '');
+  assert.equal(await options.locator('#candidate-declarations, #assign-field option[value^="declarations."]').count(), 0);
   pass('DOCX is parsed locally into editable review without changing saved profile');
   await options.getByRole('button', { name: '确认并应用导入', exact: true }).click();
   await options.locator('#import-dialog').waitFor({ state: 'hidden' });
@@ -81,6 +100,22 @@ async function baseURL() {
   let panel;
   for (let i = 0; i < 100; i++) { panel = site.frames().find(f => f.url().startsWith(prefix + '/panel.html')); if (panel) break; await new Promise(r => setTimeout(r, 50)); }
   assert.ok(panel, 'floating extension panel available'); await panel.locator('.quick-card').first().waitFor();
+  assert.equal(await panel.locator('#category option[value="declarations"]').count(), 0);
+  await site.evaluate(() => {
+    const label = document.createElement('label'); label.htmlFor = 'retired-exam-city'; label.textContent = '首选考试城市';
+    const input = document.createElement('input'); input.id = 'retired-exam-city';
+    const container = document.createElement('div'); container.append(label, input); document.querySelector('form').append(container);
+  });
+  await site.locator('#retired-exam-city').click();
+  await panel.locator('#target').filter({ hasText: '首选考试城市' }).waitFor();
+  assert.equal(await panel.locator('#recommended-cards .quick-card').count(), 0);
+  await panel.locator('#tab-batch').click();
+  const batch = panel.frameLocator('#batch');
+  try { await batch.locator('#scan').click({ timeout: 5000 }); } catch (error) { console.error('Batch frame URLs:', site.frames().map(frame => frame.url())); throw error; }
+  await batch.locator('#rows .field-row').first().waitFor();
+  assert.equal(await batch.locator('option[value^="declarations."]').count(), 0);
+  await panel.locator('#tab-quick').click();
+  pass('retired fields are absent from floating categories, focused recommendations and batch mappings');
   assert.ok(await panel.locator('.quick-card').count() > 10); pass('real extension iframe shows searchable cards in a persistent floating panel');
   await site.locator('#full-name').click();
   await panel.getByRole('searchbox', { name: '搜索资料' }).fill('基本资料 · 姓名');

@@ -83,6 +83,10 @@
         else { profile[group].push(row); added++; }
       }
     }
+    if (incoming.declarations) {
+      profile.declarations ||= {};
+      for (const [key, value] of Object.entries(incoming.declarations)) if (!profile.declarations[key]) profile.declarations[key] = value;
+    }
     profile._meta.source = incoming._meta.source || profile._meta.source;
     profile._meta.reviewNotes = [...new Set([...profile._meta.reviewNotes, ...incoming._meta.reviewNotes])].slice(0, 30);
     return { profile: S.validateProfile(profile), conflicts, duplicates, added };

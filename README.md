@@ -6,12 +6,12 @@
 
 ## 下载与安装
 
-1. 打开 [Releases 下载页](https://github.com/keyingdm/wangshen-zhushou/releases/latest)，下载 Assets 中的 `chrome-edge-extension-v0.3.0.zip`，解压到固定文件夹。
+1. 打开 [Releases 下载页](https://github.com/keyingdm/wangshen-zhushou/releases/latest)，下载 Assets 中的 `chrome-edge-extension-v0.3.1.zip`，解压到固定文件夹。
 2. Chrome 打开 `chrome://extensions`；Edge 打开 `edge://extensions`。
 3. 开启开发者模式，点击“加载已解压的扩展程序”，选择解压后包含 `manifest.json` 的文件夹。
 4. 在浏览器工具栏固定“网申助手”。打开网申网页，点击图标即可打开右侧面板。
 
-Releases 同时提供更新说明与 `SHA256SUMS.txt` 校验文件。也可以下载[仓库内的 v0.3.0 安装包](网申助手_通用插件_v0.3.0.zip)，或使用 **Code → Download ZIP** 下载整个项目，解压后加载 `extension` 文件夹。插件正常使用无需 Node.js、Python 或构建命令。
+Releases 同时提供更新说明与 `SHA256SUMS.txt` 校验文件。也可以下载[仓库内的 v0.3.1 安装包](网申助手_通用插件_v0.3.1.zip)，或使用 **Code → Download ZIP** 下载整个项目，解压后加载 `extension` 文件夹。插件正常使用无需 Node.js、Python 或构建命令。
 
 **第一次使用：[跟着图文教程完成安装、导入与填写](使用说明.md)**。插件面板和资料库中的“使用教程”也可打开随包提供的离线教程。
 
@@ -23,7 +23,7 @@ Releases 同时提供更新说明与 `SHA256SUMS.txt` 校验文件。也可以�
 - **本机材料提取**：支持 DOCX、文字 PDF、TXT / MD、JSON、图片，以及扫描 PDF 的中英 OCR。识别草稿经人工核对后保存。
 - **右侧可折叠面板**：搜索、分类、复制、编辑、替换字段、光标插入和撤销。
 - **识别后批量填写**：检查字段对应关系与预览后填写；已有内容默认保留，敏感字段逐项核对。
-- **网申栏目**：个人资料、教育、项目、校园、工作、证书、家庭、成果、奖惩、爱好评价、资格声明和考试城市。
+- **网申栏目**：个人资料、教育、项目、校园、工作、证书、家庭、成果、奖惩、爱好评价。
 - **求职管理**：岗位资料版本、手动投递记录与本地附件库。
 - **自带 API Key 的 AI 精简**：自行配置兼容 Chat Completions 的服务，只发送工作区中的一段文字；先预览，再手动采用。
 - **v0.3 体验改进**：输入框对应推荐、经历分组、常用置顶、最近使用、自动保存与草稿恢复、网页字数提示、短版 / 标准版 / 详细版、导入去重与冲突选择、待处理定位、可调宽度和紧凑模式。

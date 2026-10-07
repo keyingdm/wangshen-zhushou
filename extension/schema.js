@@ -91,13 +91,6 @@
       def('date', '奖惩时间', ['获奖时间', '奖励时间', '处分时间'], { date: true }), def('issuer', '授予单位', ['颁奖单位', '颁发单位']),
       def('description', '奖惩说明', ['获奖描述', '奖励内容'], { multiline: true })
     ] },
-    declarations: { label: '资格与声明', fields: [
-      def('groupRelative', '国家能源亲属', ['国家能源集团亲属', '是否有国家能源亲属'], { sensitive: true }),
-      def('hardshipGraduate', '对口支援县困难家庭毕业生', ['为国家能源集团乡村振兴对口支援县困难家庭毕业生'], { sensitive: true }),
-      def('relativeAvoidance', '存在亲属回避情况', ['亲属回避情况'], { sensitive: true }),
-      def('employedGracePeriod', '存在两年择业期已就业', ['两年择业期内已就业'], { sensitive: true }),
-      def('examCity1', '首选考试城市', ['第一考试城市']), def('examCity2', '备选考试城市', ['第二考试城市'])
-    ] },
     text: { label: '技能与长文本', fields: [
       def('skills', '专业技能', ['技术技能', '技能描述', '职业技能', '技能特长'], { multiline: true }),
       def('computerSkills', '计算机技能', ['电脑技能'], { multiline: true }),
@@ -109,6 +102,8 @@
       def('selfEvaluation', '自我评价', ['自我介绍', '个人评价'], { multiline: true })
     ] }
   };
+  // Retired fields survive old JSON backup round-trips, but never enter UI or filling.
+  const retiredDeclarationKeys = ['groupRelative', 'hardshipGraduate', 'relativeAvoidance', 'employedGracePeriod', 'examCity1', 'examCity2'];
   function emptyProfile() {
     const p = { version: 2, _meta: { source: '', reviewNotes: [] } };
     for (const [g, config] of Object.entries(groups)) p[g] = config.repeat ? [] : blankRecord(g);
@@ -136,6 +131,14 @@
         p[g] = rows.map(r => copyRecord(r, g));
       } else p[g] = copyRecord(input[g] ?? {}, g);
     }
+    if (input.declarations !== undefined) {
+      if (!input.declarations || typeof input.declarations !== 'object' || Array.isArray(input.declarations)) throw Error('旧版栏目备份格式不正确。');
+      p.declarations = Object.fromEntries(retiredDeclarationKeys.map(key => {
+        const value = input.declarations[key] ?? '';
+        if (typeof value !== 'string' || value.length > 15000) throw Error('旧版栏目备份值必须是不超过 15000 字符的文本。');
+        return [key, value.trim()];
+      }));
+    }
     p._meta.source = typeof input._meta?.source === 'string' ? input._meta.source.slice(0, 300) : '';
     p._meta.reviewNotes = Array.isArray(input._meta?.reviewNotes) ? input._meta.reviewNotes.filter(n => typeof n === 'string').slice(0, 30).map(n => n.slice(0, 1000)) : [];
     return p;
@@ -160,7 +163,6 @@
     if (/资格证|证书|certificate/.test(n)) return 'certificates';
     if (/取得成果|科研成果|专利成果|achievement/.test(n)) return 'achievements';
     if (/奖惩|奖励|获奖|award/.test(n)) return 'awards';
-    if (/资格与声明|报考声明/.test(n)) return 'declarations';
     if (/项目|project/.test(n)) return 'projects';
     if (/校园|社团|志愿|实践|campus/.test(n)) return 'campus';
     if (/工作经历|实习经历|工作经验|employment|workexperience/.test(n)) return 'work';

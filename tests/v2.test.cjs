@@ -9,6 +9,20 @@ test('new library contains no preloaded applicant data', () => {
   const l = L.emptyLibrary(); assert.equal(l.profiles.length, 1); assert.equal(S.entries(L.active(l).profile).every(e => !e.value), true);
   assert.deepEqual(l.sources, []); assert.deepEqual(l.applications, []); assert.deepEqual(l.attachments, []);
 });
+
+test('retired declarations stay in old backups without becoming cards or fill mappings', () => {
+  const fresh = S.emptyProfile(); assert.equal('declarations' in fresh, false); assert.equal('declarations' in S.groups, false);
+  const old = { ...fresh, declarations: { groupRelative: '否', relativeAvoidance: '否', examCity1: '示例城市' } };
+  const library = L.emptyLibrary(); library.profiles[0].profile = old;
+  const restored = L.validate(JSON.parse(JSON.stringify(L.validate(library))));
+  const profile = L.active(restored).profile;
+  assert.equal(profile.declarations.examCity1, '示例城市');
+  assert.equal(L.quickEntries(profile).some(e => e.group === 'declarations'), false);
+  assert.equal(S.infer({ label: '首选考试城市', section: '资格与声明' }, profile).path, '');
+  assert.equal(L.merge(fresh, old).declarations.relativeAvoidance, '否');
+  assert.equal(L.merge(old, fresh).declarations.examCity1, '示例城市');
+  assert.throws(() => S.validateProfile({ ...fresh, declarations: { examCity1: 123 } }));
+});
 test('raw text produces a reviewable draft and preserves source month precision', () => {
   const p = I.parseText('示例同学\n手机号码：13800000000\n邮箱：demo@example.com\n教育背景\n2023.09 - 2027.06\n示例理工大学\n电子信息科学与技术\n本科\n项目经历\n2024.03 - 2024.12\n示例项目\n负责人\n项目背景：采集传感器数据\n个人职责：编写程序\n项目成果：完成演示', 'sample.txt');
   assert.equal(p.basic.phone, '13800000000'); assert.equal(p.basic.email, 'demo@example.com');

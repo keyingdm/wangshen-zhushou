@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "网申助手 · 本地资料库",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "在本机管理求职资料，预览字段对应关系后填写网申，支持撤销和手动校正。",
   "minimum_chrome_version": "128",
   "permissions": ["activeTab", "scripting", "storage"],
@@ -9,6 +9,6 @@
   "options_page": "options.html",
   "background": { "service_worker": "background.js" },
   "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
-  "web_accessible_resources": [{ "resources": ["panel.html"], "matches": ["http://*/*", "https://*/*"] }],
+  "web_accessible_resources": [{ "resources": ["panel.html", "popup.html"], "matches": ["http://*/*", "https://*/*"] }],
   "content_security_policy": { "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; worker-src 'self'" }
 }
