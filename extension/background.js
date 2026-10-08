@@ -32,16 +32,21 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (!binding || binding.nonce !== message.nonce || senderURL.searchParams.get('nonce') !== binding.nonce || senderURL.searchParams.get('tab') !== String(tabId) || (sender.tab && sender.tab.id !== tabId)) throw Error('面板未绑定当前标签页，请点击工具栏重新打开');
     const tab = await chrome.tabs.get(tabId);
     if (!tab.url || new URL(tab.url).origin !== binding.origin) throw Error('已切换网站，请点击工具栏重新打开面板');
-    if (!['scan', 'fill', 'undo', 'focused', 'insertFocused', 'locate', 'resize'].includes(message.action)) throw Error('不支持的操作');
+    if (!['scan', 'fill', 'undo', 'focused', 'insertFocused', 'locate', 'resize', 'collapse', 'close'].includes(message.action)) throw Error('不支持的操作');
     const results = await chrome.scripting.executeScript({ target: { tabId }, func: async (action, payload) => {
       try {
         if (action === 'resize') return { ok: true, value: ApplicationOverlay.resize(payload.width) };
+        if (action === 'collapse' || action === 'close') return { ok: true, value: ApplicationOverlay[action]() };
         if (!globalThis.ApplicationAgent) throw Error('页面已刷新，请点击工具栏重新打开面板');
         return { ok: true, value: await ApplicationAgent[action](payload) };
       } catch (error) { return { ok: false, error: error.message || '页面拒绝操作' }; }
     }, args: [message.action, message.payload || null] });
     const response = results[0]?.result;
     if (!response?.ok) throw Error(response?.error || '页面未返回结果');
+    if (message.action === 'close') {
+      const bindings = (await chrome.storage.session.get('panelBindings')).panelBindings || {};
+      if (bindings[tabId]?.nonce === message.nonce) { delete bindings[tabId]; await chrome.storage.session.set({ panelBindings: bindings }); }
+    }
     return response.value;
   })().then(result => respond({ ok: true, result })).catch(error => respond({ ok: false, error: error.message }));
   return true;

@@ -1,18 +1,21 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>网申助手 · 悬浮面板</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="panel.css"></head>
 <body class="side-panel">
-<header><div class="brand-icon">申</div><div><h1>网申助手 <span class="badge">0.3</span></h1><p>点击网页输入框，即可查看推荐资料</p></div><button id="manage" class="subtle">资料库 ↗</button></header>
+<header class="panel-header"><div class="panel-brand"><div class="brand-icon" aria-hidden="true">申</div><div><h1>网申助手 <span class="badge">0.3.2</span></h1><p>把重复填写，交给准备好的资料</p></div></div><div class="window-actions"><button id="collapse-panel" class="window-button" title="收起助手，保留侧边把手" aria-label="收起助手"><span aria-hidden="true">−</span></button><button id="close-panel" class="window-button close-button" title="关闭助手；可点击浏览器工具栏图标重新打开" aria-label="关闭助手"><span aria-hidden="true">×</span></button></div></header>
 <main>
+  <div class="section-eyebrow"><span>当前资料</span><button id="manage" class="subtle">资料库 ↗</button></div>
   <div class="profile-picker"><select id="profile" aria-label="岗位资料版本"></select><button id="import-materials" class="secondary">导入材料</button></div>
-  <div class="tabbar"><button id="tab-quick" class="selected">复制 / 插入</button><button id="tab-batch">识别批量填写</button></div>
+  <div class="tabbar" role="tablist" aria-label="填写方式"><button id="tab-quick" class="selected" role="tab" aria-selected="true" aria-controls="quick-view">复制 / 插入</button><button id="tab-batch" role="tab" aria-selected="false" aria-controls="batch">识别批量填写</button></div>
   <p id="status" role="status" aria-live="polite">使用者自行导入材料，核对后使用。</p>
   <div class="panel-settings"><label>宽度 <select id="panel-width" aria-label="面板宽度"><option value="320">窄 · 320</option><option value="374" selected>标准 · 374</option><option value="440">宽 · 440</option><option value="520">加宽 · 520</option></select></label><label><input id="compact" type="checkbox"> 紧凑模式</label><a href="help.html" target="_blank" rel="noopener">使用教程 ↗</a></div>
   <div id="quick-view">
     <div class="target-box"><strong id="target">目标：先点击网页输入框</strong><select id="insert-mode" aria-label="插入方式"><option value="replace">替换整个字段</option><option value="cursor">插入光标 / 替换选中内容</option></select><button id="quick-undo" class="subtle">撤销上次填写</button></div>
     <section id="recommendations" class="recommendations" aria-label="当前输入框推荐资料" hidden><h2>当前输入框推荐</h2><div id="recommended-cards"></div><p class="tiny muted">在面板内按 Alt + Enter 插入唯一的非敏感推荐；多条推荐需手动选择。</p></section>
-    <input id="search" type="search" placeholder="搜索姓名、学校、项目或内容" aria-label="搜索资料">
+    <div class="search-field"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="搜索姓名、学校、项目…" aria-label="搜索资料"></div>
+    <div class="card-filters">
     <select id="category" aria-label="资料分类"><option value="">全部分类</option></select>
     <select id="quick-filter" aria-label="快捷筛选"><option value="all">全部资料</option><option value="pinned">常用置顶</option><option value="recent">最近使用</option></select>
+    </div>
     <div id="cards" class="quick-cards"></div>
     <details id="workbench" class="workbench"><summary>编辑与 AI 精简工作区</summary>
       <textarea id="draft" rows="6" maxlength="15000" aria-label="当前编辑内容" placeholder="点击资料卡上的“编辑”，或直接输入临时文字"></textarea><div id="count" class="muted">0 字符</div><div id="draft-status" class="tiny muted" role="status"></div>

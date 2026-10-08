@@ -136,8 +136,13 @@ async function baseURL() {
   await options.reload(); assert.equal(await options.locator('#version option').count(), 2); pass('job-specific versions persist independently');
   const denial = await panel.evaluate(async () => chrome.runtime.sendMessage({ type: 'application-panel', tabId: Number(new URLSearchParams(location.search).get('tab')), nonce: 'wrong-token', action: 'scan' })); assert.equal(denial.ok, false); pass('panel cannot route requests with an incorrect page binding');
   const deniedResize = await panel.evaluate(async () => chrome.runtime.sendMessage({ type: 'application-panel', tabId: Number(new URLSearchParams(location.search).get('tab')), nonce: 'wrong-token', action: 'resize', payload: { width: 520 } })); assert.equal(deniedResize.ok, false); pass('new overlay actions retain the page binding permission check');
-  let aiRequest;
-  aiServer = http.createServer((req, res) => { let body = ''; req.on('data', chunk => { body += chunk; }); req.on('end', () => { aiRequest = JSON.parse(body); res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ choices: [{ message: { content: '编写采集程序并完成联调。' } }] })); }); });
+  let aiRequest, delayAI = false, aiStarted, aiStopped;
+  aiServer = http.createServer((req, res) => { let body = ''; req.on('data', chunk => { body += chunk; }); req.on('end', () => {
+    aiRequest = JSON.parse(body); res.setHeader('Content-Type', 'application/json');
+    const reply = () => res.end(JSON.stringify({ choices: [{ message: { content: '编写采集程序并完成联调。' } }] }));
+    if (!delayAI) return reply();
+    const timer = setTimeout(reply, 10000); res.on('close', () => { clearTimeout(timer); aiStopped?.(); }); aiStarted?.();
+  }); });
   await new Promise(resolve => aiServer.listen(0, '127.0.0.1', resolve));
   await options.locator('#ai-endpoint').fill(`http://127.0.0.1:${aiServer.address().port}/v1/chat/completions`);
   await options.locator('#ai-model').fill('local-test-model'); await options.locator('#ai-key').fill('fake-local-test-key'); await options.locator('#save-ai').click(); await options.locator('#ai-status').filter({ hasText: '配置已保存' }).waitFor();
@@ -151,6 +156,46 @@ async function baseURL() {
   pass('AI UI sends one chosen paragraph, previews output and preserves original profile until manual use');
   await panel.locator('#draft').fill('本地演示项目的个人职责');
   await site.screenshot({ path: path.join(ROOT, 'demo/新版悬浮面板.png'), fullPage: false });
+  for (const action of ['close', 'collapse']) {
+    const denied = await panel.evaluate(async action => { const params = new URLSearchParams(location.search); return chrome.runtime.sendMessage({ type: 'application-panel', tabId: Number(params.get('tab')), nonce: 'wrong-token', action }); }, action);
+    assert.equal(denied.ok, false);
+  }
+  assert.equal(await site.locator('#application-helper-overlay').count(), 1);
+  pass('close and collapse reject messages without the current page binding');
+  await panel.locator('#collapse-panel').click();
+  await site.waitForFunction(() => document.querySelector('#application-helper-overlay').style.width === '0px');
+  await site.mouse.click(1450 - 18, 140); await panel.locator('#close-panel').waitFor({ state: 'visible' });
+  pass('header collapse leaves the side handle available for reopening');
+  await panel.evaluate(() => { globalThis.originalStorageSet = ApplicationStorage.set; ApplicationStorage.set = async (key, value) => { if (key.startsWith('panelState:')) throw Error('虚构磁盘写入失败'); return originalStorageSet(key, value); }; });
+  await panel.locator('#close-panel').click(); await panel.locator('#status').filter({ hasText: '虚构磁盘写入失败' }).waitFor();
+  assert.equal(await site.locator('#application-helper-overlay').count(), 1);
+  await panel.evaluate(() => { ApplicationStorage.set = originalStorageSet; delete globalThis.originalStorageSet; });
+  pass('a draft storage failure leaves the panel open and displays a visible error');
+  const closingDraft = '关闭前刚刚输入、还没等自动保存的虚构草稿';
+  await panel.locator('#search').fill('项目'); await panel.locator('#draft').fill(closingDraft);
+  delayAI = true; const started = new Promise(resolve => { aiStarted = resolve; }), stopped = new Promise(resolve => { aiStopped = resolve; });
+  await panel.locator('#ai-shorten').click(); await started;
+  assert.equal(await panel.locator('#close-panel').isEnabled(), true);
+  await panel.locator('#close-panel').click();
+  let stopTimeout; try { await Promise.race([stopped, new Promise((_, reject) => { stopTimeout = setTimeout(() => reject(Error('AI request was not cancelled')), 4000); })]); } finally { clearTimeout(stopTimeout); }
+  pass('the close button stays usable during AI generation and cancels the pending request');
+  await site.locator('#application-helper-overlay').waitFor({ state: 'detached' });
+  await options.waitForFunction(async tabId => !(await chrome.storage.session.get('panelBindings')).panelBindings?.[tabId], tabId);
+  const savedDraft = await options.evaluate(async () => { const library = await ApplicationLibrary.load(); return ApplicationStorage.get('panelState:' + library.activeId); });
+  assert.equal(savedDraft.draft, closingDraft);
+  pass('closing flushes the pending draft, removes the entire overlay and revokes its binding');
+  const reopenedNonce = 'test-reopened-panel-binding';
+  await worker.evaluate(async ({ tabId, nonce, base }) => {
+    await chrome.storage.session.set({ panelBindings: { [tabId]: { nonce, origin: base } } });
+    const width = (await chrome.storage.local.get('panelWidth')).panelWidth || 374;
+    await chrome.scripting.executeScript({ target: { tabId }, func: config => ApplicationOverlay.show(config), args: [{ tabId, nonce, width, url: chrome.runtime.getURL('panel.html') }] });
+  }, { tabId, nonce: reopenedNonce, base });
+  for (let index = 0; index < 100; index++) { panel = site.frames().find(f => f.url().includes('nonce=' + reopenedNonce)); if (panel) break; await new Promise(resolve => setTimeout(resolve, 50)); }
+  assert.ok(panel); await panel.locator('#draft').waitFor({ state: 'visible' });
+  assert.equal(await panel.locator('#draft').inputValue(), closingDraft); assert.equal(await panel.locator('#search').inputValue(), '项目');
+  const staleClose = await panel.evaluate(async oldNonce => { const params = new URLSearchParams(location.search); return chrome.runtime.sendMessage({ type: 'application-panel', tabId: Number(params.get('tab')), nonce: oldNonce, action: 'close' }); }, nonce);
+  assert.equal(staleClose.ok, false); assert.equal(await site.locator('#application-helper-overlay').count(), 1);
+  pass('a fresh toolbar-style open recreates the panel, restores its draft and rejects the old binding');
   assert.deepEqual(errors, []); pass('new interface and material import render without JavaScript errors');
   console.log(`New-version browser scenarios passed: ${passed}`);
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {

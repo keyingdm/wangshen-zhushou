@@ -1,7 +1,7 @@
 (async function () {
   const S = ApplicationSchema, L = ApplicationLibrary, U = ApplicationUX, Store = ApplicationStorage, $ = id => document.getElementById(id);
   const params = new URLSearchParams(location.search);
-  let library = await L.load(), busy = false, draftDate = false, aiController, target = null, editingKey = '', state = {}, stateTimer, stateChain = Promise.resolve();
+  let library = await L.load(), busy = false, closing = false, draftDate = false, aiController, target = null, editingKey = '', state = {}, stateTimer, stateChain = Promise.resolve();
   const status = message => { $('status').textContent = message; };
   const node = (tag, cls, text) => { const el = document.createElement(tag); if (cls) el.className = cls; if (text) el.textContent = text; return el; };
   const profile = () => L.active(library).profile;
@@ -11,7 +11,7 @@
     const response = await chrome.runtime.sendMessage({ type: 'application-panel', tabId: Number(params.get('tab')), nonce: params.get('nonce'), action, payload });
     if (!response?.ok) throw Error(response?.error || '请点击工具栏重新打开助手'); return response.result;
   }
-  function controls() { document.querySelectorAll('button').forEach(button => { if (button.id !== 'ai-cancel') button.disabled = busy; }); $('profile').disabled = busy; }
+  function controls() { document.querySelectorAll('button').forEach(button => { if (!['ai-cancel', 'close-panel', 'collapse-panel'].includes(button.id)) button.disabled = busy; }); $('profile').disabled = busy; }
   async function attempt(fn) { if (busy) return; busy = true; controls(); try { await fn(); } catch (e) { status(e.name === 'AbortError' ? '操作已取消或超时' : e.message); } finally { busy = false; controls(); } }
   function snapshotState() {
     return { ...state, search: $('search').value, category: $('category').value, filter: $('quick-filter').value,
@@ -25,6 +25,14 @@
     return stateChain;
   }
   function scheduleState() { $('draft-status').textContent = '正在保存草稿…'; clearTimeout(stateTimer); stateTimer = setTimeout(persistState, 250); }
+  async function dismiss(action) {
+    if (closing) return; closing = true; aiController?.abort();
+    try { await persistState(); await command(action); }
+    catch (error) { status('暂时无法关闭或收起，当前内容仍保留：' + error.message); }
+    finally { closing = false; }
+  }
+  $('close-panel').onclick = () => dismiss('close');
+  $('collapse-panel').onclick = () => dismiss('collapse');
   async function restoreState() {
     clearTimeout(stateTimer); state = await Store.get('panelState:' + library.activeId, {});
     for (const [id, value] of Object.entries({ search: state.search || '', category: state.category || '', 'quick-filter': state.filter || 'all', draft: state.draft || '', 'ai-result': state.aiResult || '', limit: state.limit || '300', 'insert-mode': state.mode || 'replace' })) $(id).value = value;
@@ -91,8 +99,8 @@
     library = await L.update(current => { const rows = current.textVariants || []; const found = rows.find(v => v.profileId === profileId && v.entryKey === entryKey && v.label === label); if (found) found.value = value; else rows.push({ id: L.id(), profileId, entryKey, label, value }); current.textVariants = rows; return current; });
     renderCards(); renderRecommended(); await persistState(); status(`已保存${label}，原资料保留；同名版本再次保存会更新内容。`);
   });
-  $('tab-quick').onclick = () => { $('quick-view').hidden = false; $('batch').hidden = true; $('tab-quick').classList.add('selected'); $('tab-batch').classList.remove('selected'); };
-  $('tab-batch').onclick = () => { $('quick-view').hidden = true; $('batch').hidden = false; $('batch').onload = () => { if (globalThis.ApplicationDemoBridge) $('batch').contentWindow.ApplicationDemoBridge = ApplicationDemoBridge; }; $('batch').src = 'popup.html' + location.search; $('tab-batch').classList.add('selected'); $('tab-quick').classList.remove('selected'); };
+  $('tab-quick').onclick = () => { $('quick-view').hidden = false; $('batch').hidden = true; $('tab-quick').classList.add('selected'); $('tab-batch').classList.remove('selected'); $('tab-quick').setAttribute('aria-selected', 'true'); $('tab-batch').setAttribute('aria-selected', 'false'); };
+  $('tab-batch').onclick = () => { $('quick-view').hidden = true; $('batch').hidden = false; $('batch').onload = () => { if (globalThis.ApplicationDemoBridge) $('batch').contentWindow.ApplicationDemoBridge = ApplicationDemoBridge; }; $('batch').src = 'popup.html' + location.search; $('tab-batch').classList.add('selected'); $('tab-quick').classList.remove('selected'); $('tab-quick').setAttribute('aria-selected', 'false'); $('tab-batch').setAttribute('aria-selected', 'true'); };
   $('ai-shorten').onclick = () => attempt(async () => {
     const selected = $('draft').value; if (!selected.trim()) throw Error('先把需要精简的那段文字放入工作区');
     aiController = new AbortController(); $('ai-cancel').hidden = false; status('正在生成精简建议，只发送工作区这一段文字…');

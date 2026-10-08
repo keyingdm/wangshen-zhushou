@@ -29,5 +29,12 @@ const pass = message => { passed++; console.log('PASS ' + message); };
   await page.screenshot({ path: path.join(ROOT, 'docs/images/待处理清单.png') }); await panel.locator('#tab-quick').click(); await panel.locator('#compact').uncheck(); await panel.locator('#search').fill(''); await page.locator('#project-responsibility').click(); await panel.locator('#target').filter({ hasText: '责任描述' }).waitFor(); await page.screenshot({ path: path.join(ROOT, 'docs/images/侧边面板.png') });
   await options.bringToFront(); await options.screenshot({ path: path.join(ROOT, 'docs/images/资料库.png'), fullPage: false });
   await options.locator('#clone-version').click(); await options.locator('#status').filter({ hasText: '已自动保存' }).waitFor(); await options.locator('#version').selectOption(lib.activeId); await options.locator('#status').filter({ hasText: '已保存并切换' }).waitFor(); options.once('dialog', dialog => dialog.accept()); await options.locator('#remove-version').click(); await options.locator('#status').filter({ hasText: '已删除版本' }).waitFor(); const cleaned = await options.evaluate(async id => ({ library: await ApplicationLibrary.load(), draft: await ApplicationStorage.get('panelState:' + id, null) }), lib.activeId); assert.equal(cleaned.library.profiles.length, 1); assert.equal(cleaned.library.textVariants.length, 0); assert.equal(cleaned.draft, null); pass('deleting a profile also removes its text variants and saved panel draft');
+  for (const width of [320, 374, 440, 520]) {
+    await panel.locator('#panel-width').selectOption(String(width));
+    await page.waitForFunction(width => document.querySelector('iframe[title="网申助手新版面板"]').parentElement.style.width === `${width}px`, width);
+    const layout = await panel.locator('body').evaluate(body => { const close = document.querySelector('#close-panel').getBoundingClientRect(); return { overflow: document.documentElement.scrollWidth > innerWidth || body.scrollWidth > innerWidth, closeVisible: close.left >= 0 && close.right <= innerWidth && close.top >= 0 && close.bottom <= innerHeight }; });
+    assert.equal(layout.overflow, false, `no horizontal overflow at ${width}px`); assert.equal(layout.closeVisible, true);
+  }
+  pass('all four panel widths fit horizontally and keep the close control visible');
   assert.deepEqual(errors, []); pass('the new UI and import comparisons have no JavaScript errors'); console.log(`UX browser scenarios passed: ${passed}`);
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await browser?.close(); server?.kill(); });

@@ -7,9 +7,14 @@
   const frame = document.createElement('iframe'); frame.src = '../extension/panel.html'; frame.title = '网申助手新版面板'; frame.allow = 'clipboard-write'; Object.assign(frame.style, { width: '100%', height: '100%', border: '0', boxShadow: '-4px 0 25px #11352a1a' });
   const button = document.createElement('button'); button.textContent = '收起助手'; Object.assign(button.style, { position: 'absolute', left: '-35px', top: '100px', width: '35px', writingMode: 'vertical-rl', padding: '13px 8px', color: 'white', background: '#126e65' });
   document.body.style.paddingRight = `${width + 26}px`;
-  button.onclick = () => { const folded = host.style.width !== '0px'; host.style.width = folded ? '0px' : `${width}px`; frame.hidden = folded; button.textContent = folded ? '打开助手' : '收起助手'; document.body.style.paddingRight = folded ? '25px' : `${width + 26}px`; };
+  const collapse = () => { host.style.width = '0px'; frame.hidden = true; button.textContent = '打开助手'; document.body.style.paddingRight = '25px'; return { folded: true }; };
+  const reopen = () => { host.hidden = false; host.style.width = `${width}px`; frame.hidden = false; button.textContent = '收起助手'; document.body.style.paddingRight = `${width + 26}px`; document.getElementById('reopen-panel').hidden = true; };
+  button.onclick = () => { if (frame.hidden) reopen(); else collapse(); };
+  document.getElementById('reopen-panel').onclick = reopen;
   function bridge() { frame.contentWindow.ApplicationDemoBridge = (action, payload) => {
     if (action === 'resize') { width = Math.max(280, Math.min(Number(payload.width) || 374, 600, innerWidth - 48)); host.style.width = `${width}px`; document.body.style.paddingRight = `${width + 26}px`; return { width }; }
+    if (action === 'collapse') return collapse();
+    if (action === 'close') { host.hidden = true; document.body.style.paddingRight = '25px'; document.getElementById('reopen-panel').hidden = false; return { closed: true }; }
     return action === 'scan' ? ApplicationAgent.scan(document.getElementById('form')) : ApplicationAgent[action](payload);
   }; }
   frame.addEventListener('load', bridge); host.append(frame, button); document.body.append(host);
