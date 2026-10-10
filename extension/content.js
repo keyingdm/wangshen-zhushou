@@ -57,6 +57,7 @@
       const heading = [...parent.children].find(n => /^(LEGEND|H[1-6])$/.test(n.tagName) || n.classList.contains('section-title'));
       const title = clean(explicit || heading?.textContent);
       if (!fallback && title) fallback = title;
+      if (title && (heading || parent.tagName === 'FIELDSET')) return title;
       if (S.sectionGroup(title)) return title;
     }
     return fallback;

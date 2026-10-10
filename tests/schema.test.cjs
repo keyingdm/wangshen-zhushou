@@ -56,7 +56,7 @@ test('never truncates long text silently', () => {
   assert.equal(S.prepare('12345', { type: 'textarea', maxLength: 5 }).value, '12345');
 });
 test('strict schema rejects unknown version and non-string fields', () => {
-  assert.throws(() => S.validateProfile({ version: 3 }));
+  assert.throws(() => S.validateProfile({ version: 99 }));
   assert.throws(() => S.validateProfile({ version: 1, basic: { name: 3 } }));
   const sanitized = S.validateProfile(JSON.parse('{"version":1,"basic":{"name":" ok ","__proto__":{"polluted":true}},"extraneous":"drop"}'));
   assert.equal(sanitized.basic.name, 'ok');
@@ -65,7 +65,7 @@ test('strict schema rejects unknown version and non-string fields', () => {
 });
 test('migrates version 1 while separating hometown, household and source city', () => {
   const migrated = S.validateProfile({ version: 1, basic: { name: '旧资料' } });
-  assert.equal(migrated.version, 2); assert.equal(migrated.basic.name, '旧资料'); assert.equal(migrated.basic.origin, '');
+  assert.equal(migrated.version, 3); assert.equal(migrated.basic.name, '旧资料'); assert.equal(migrated.basic.origin, '');
   assert.equal(S.infer(field('生源所在地', '个人信息'), migrated).path, 'basic.origin');
   assert.equal(S.infer(field('籍贯省份', '个人信息'), migrated).path, 'basic.hometownProvince');
 });

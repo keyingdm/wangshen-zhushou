@@ -28,17 +28,77 @@
   }
   const markDirty = () => { dirty = true; revision++; status('正在自动保存…'); clearTimeout(saveTimer); saveTimer = setTimeout(() => saveNow().catch(e => status('保存失败，当前编辑仍保留：' + e.message)), 500); };
   async function attempt(fn) { try { await fn(); } catch (e) { status(`操作失败：${e.message}`); } }
+  let sectionEditing = '', fieldEditing = null;
+  function changedStructure(profile, change, changed = markDirty, prefix = 'group', target = $('editor')) {
+    const before = structuredClone(profile);
+    try { change(); S.validateProfile(profile); } catch (error) { applyInPlace(profile, before); throw error; }
+    changed(); editor(profile, target, prefix, changed);
+    if (prefix === 'group') { renderNav(); if ($('directory-dialog').open) renderDirectories(); }
+    else assignmentOptions();
+  }
+  function openSection(group = '') {
+    sectionEditing = group; const config = S.groupsFor(active().profile, true)[group];
+    $('section-dialog-title').textContent = group ? '目录改名' : '新建目录'; $('section-name').value = config?.label || '';
+    $('section-repeat').value = config?.repeat ? 'repeat' : 'single'; $('section-repeat').disabled = Boolean(group); $('section-error').textContent = ''; $('section-dialog').showModal(); $('section-name').focus();
+  }
+  function openField(profile, group, prefix, target, changed, key = '') {
+    fieldEditing = { profile, group, prefix, target, changed, key }; const field = S.groupsFor(profile, true)[group].fields.find(f => f.key === key);
+    $('field-dialog-title').textContent = `${key ? '编辑字段' : '添加字段'} · ${S.groupsFor(profile, true)[group].label}`;
+    $('field-name').value = field?.label || ''; $('field-type').value = field?.type || 'text'; $('field-aliases').value = field ? field.aliases.slice(1).join('，') : ''; $('field-sensitive').checked = Boolean(field?.sensitive); $('field-error').textContent = ''; $('field-dialog').showModal(); $('field-name').focus();
+  }
+  $('new-section').onclick = () => openSection(); $('manage-sections').onclick = () => { renderDirectories(); $('directory-dialog').showModal(); };
+  $('cancel-section').onclick = () => $('section-dialog').close(); $('cancel-field').onclick = () => $('field-dialog').close(); $('close-directory').onclick = () => $('directory-dialog').close();
+  $('section-form').onsubmit = event => {
+    event.preventDefault(); let group = sectionEditing;
+    try { changedStructure(active().profile, () => { if (group) S.renameSection(active().profile, group, $('section-name').value); else group = S.addSection(active().profile, $('section-name').value, $('section-repeat').value === 'repeat'); }); $('section-dialog').close(); if (!$('directory-dialog').open) document.getElementById('group-' + group)?.scrollIntoView({ block: 'start' }); }
+    catch (error) { $('section-error').textContent = error.message; }
+  };
+  $('field-form').onsubmit = event => {
+    event.preventDefault(); const ctx = fieldEditing;
+    try { changedStructure(ctx.profile, () => S.putField(ctx.profile, ctx.group, { label: $('field-name').value, type: $('field-type').value, aliases: $('field-aliases').value.split(/[，,\n]/).map(s => s.trim()).filter(Boolean), sensitive: $('field-sensitive').checked }, ctx.key), ctx.changed, ctx.prefix, ctx.target); $('field-dialog').close(); }
+    catch (error) { $('field-error').textContent = error.message; }
+  };
+  function renderDirectories() {
+    const profile = active().profile; $('directory-list').replaceChildren();
+    const configs = Object.entries(S.groupsFor(profile, true));
+    configs.forEach(([group, config], index) => {
+      const row = node('div', 'directory-row'), label = node('label', 'inline-label'), visible = node('input'); visible.type = 'checkbox'; visible.checked = !profile._custom.hidden.includes(group); visible.setAttribute('aria-label', `显示目录 ${config.label}`); label.append(visible, node('strong', '', config.label), node('span', 'badge', config.custom ? '自定义' : '内置'));
+      visible.onchange = () => attempt(() => changedStructure(profile, () => S.hideSection(profile, group, !visible.checked)));
+      const tools = node('div', 'toolbar');
+      for (const [text, action, disabled] of [['改名', () => openSection(group), false], ['上移', () => changedStructure(profile, () => S.moveSection(profile, group, -1)), index === 0], ['下移', () => changedStructure(profile, () => S.moveSection(profile, group, 1)), index === configs.length - 1]]) { const button = node('button', 'secondary', text); button.disabled = disabled; button.setAttribute('aria-label', `${config.label} ${text}`); button.onclick = () => attempt(action); tools.append(button); }
+      if (config.custom) { const remove = node('button', 'subtle danger', '删除目录'); remove.setAttribute('aria-label', `${config.label} 删除目录`); remove.onclick = () => attempt(() => { if (confirm(`删除目录“${config.label}”及其中全部内容？请先备份重要资料。`)) changedStructure(profile, () => S.removeSection(profile, group)); }); tools.append(remove); }
+      row.append(label, tools); $('directory-list').append(row);
+    });
+  }
+  function renderNav() {
+    $('nav').replaceChildren();
+    for (const [g, config] of Object.entries(S.groupsFor(active().profile))) { const link = node('a', '', config.label); link.href = `#group-${g}`; $('nav').append(link); }
+    for (const [key, label] of [['sources', '导入原文'], ['attachments', '电子附件'], ['applications', '投递记录'], ['ai-settings', 'AI 设置']]) { const link = node('a', '', label); link.href = `#${key}`; $('nav').append(link); }
+  }
   function editor(profile, target, prefix, changed) {
     target.replaceChildren();
-    for (const [group, config] of Object.entries(S.groups)) {
+    for (const [group, config] of Object.entries(S.groupsFor(profile))) {
       const section = node('section', 'editor-section'); section.id = `${prefix}-${group}`;
       const title = node('div', 'section-head'); title.append(node('h2', '', config.label));
+      const actions = node('div', 'toolbar'), fieldAdd = node('button', 'secondary', '＋ 添加字段'); fieldAdd.setAttribute('aria-label', `${prefix === 'candidate' ? '草稿 ' : ''}${config.label} 添加字段`); fieldAdd.onclick = () => openField(profile, group, prefix, target, changed); actions.append(fieldAdd);
       if (config.repeat) {
         const add = node('button', 'secondary', '+ 添加一条');
-        add.onclick = () => { if (profile[group].length >= 30) return status('最多 30 条'); profile[group].push(S.blankRecord(group)); changed(); editor(profile, target, prefix, changed); if (prefix === 'candidate') assignmentOptions(); };
-        title.append(add);
+        add.onclick = () => { if (profile[group].length >= 30) return status('最多 30 条'); profile[group].push(S.blankRecord(group, profile)); changed(); editor(profile, target, prefix, changed); if (prefix === 'candidate') assignmentOptions(); };
+        actions.append(add);
       }
-      section.append(title);
+      title.append(actions); section.append(title);
+      function fieldTools(holder, f) {
+        const tools = node('div', 'toolbar');
+        for (const [text, action] of [['编辑字段', () => openField(profile, group, prefix, target, changed, f.key)], ['前移', () => changedStructure(profile, () => S.moveField(profile, group, f.key, -1), changed, prefix, target)], ['后移', () => changedStructure(profile, () => S.moveField(profile, group, f.key, 1), changed, prefix, target)], ['删除字段', () => { if (confirm(`删除字段“${f.label}”及全部记录中该字段的内容？`)) changedStructure(profile, () => S.removeField(profile, group, f.key), changed, prefix, target); }]]) { const button = node('button', text === '删除字段' ? 'subtle danger' : 'subtle', text); button.setAttribute('aria-label', `${config.label} ${f.label} ${text}`); button.onclick = () => attempt(action); tools.append(button); }
+        holder.append(tools);
+      }
+      const customFields = config.fields.filter(f => f.custom);
+      if (customFields.length) {
+        const manager = node('details', 'field-manager'); manager.append(node('summary', '', `管理自定义字段（${customFields.length}）`));
+        for (const f of customFields) { const row = node('div', 'custom-field-row'); row.append(node('span', '', f.label)); fieldTools(row, f); manager.append(row); }
+        section.append(manager);
+      }
+      if (config.custom && !config.fields.length) section.append(node('p', 'muted', '目录已创建。点击“添加字段”创建具体内容格，再填写内容。'));
       const rows = config.repeat ? profile[group] : [profile[group]];
       if (!rows.length) section.append(node('p', 'muted', '暂无记录，可以留空或添加。'));
       rows.forEach((record, index) => {
@@ -64,9 +124,7 @@
   }
   function render() {
     $('version').replaceChildren(); library.profiles.forEach(p => { const option = node('option', '', p.name); option.value = p.id; $('version').append(option); }); $('version').value = library.activeId; $('version-name').value = active().name;
-    $('nav').replaceChildren();
-    for (const [g, config] of Object.entries(S.groups)) { const link = node('a', '', config.label); link.href = `#group-${g}`; $('nav').append(link); }
-    for (const [key, label] of [['sources', '导入原文'], ['attachments', '电子附件'], ['applications', '投递记录'], ['ai-settings', 'AI 设置']]) { const link = node('a', '', label); link.href = `#${key}`; $('nav').append(link); }
+    renderNav();
     $('review').replaceChildren(); const meta = active().profile._meta;
     if (meta.source) $('review').append(node('strong', '', `来源：${meta.source}`)); meta.reviewNotes.forEach(n => $('review').append(node('p', '', n))); $('review').hidden = !meta.source && !meta.reviewNotes.length;
     editor(active().profile, $('editor'), 'group', markDirty); renderSources(); renderAttachments(); renderApplications();
@@ -100,7 +158,7 @@
   $('save').onclick = () => attempt(async () => { active().name = $('version-name').value.trim() || '未命名版本'; dirty = true; revision++; await saveNow(); status('资料、附件清单和投递记录已保存'); });
   $('version-name').oninput = () => { active().name = $('version-name').value; markDirty(); };
   $('version').onchange = () => attempt(async () => { const id = $('version').value; try { await saveNow(); library.activeId = id; dirty = true; revision++; await saveNow(); await Store.remove('rules'); render(); status('已保存并切换岗位版本'); } catch (error) { $('version').value = library.activeId; throw error; } });
-  function createVersion(clone) { if (library.profiles.length >= 20) return status('最多 20 个版本'); const record = { id: L.id(), name: clone ? `${active().name}（副本）` : '新岗位资料', profile: clone ? structuredClone(active().profile) : S.emptyProfile() }; library.profiles.push(record); library.activeId = record.id; markDirty(); render(); }
+  function createVersion(clone) { if (library.profiles.length >= 20) return status('最多 20 个版本'); const record = { id: L.id(), name: clone ? `${active().name}（副本）` : '新岗位资料', profile: clone ? structuredClone(active().profile) : S.emptyProfile(active().profile._custom) }; library.profiles.push(record); library.activeId = record.id; markDirty(); render(); }
   $('clone-version').onclick = () => createVersion(true); $('blank-version').onclick = () => createVersion(false);
   $('remove-version').onclick = () => attempt(async () => { if (library.profiles.length <= 1) return status('至少保留一个版本；可以清空资料'); if (!confirm(`删除版本“${active().name}”及其文字版本和草稿？`)) return; await saveNow(); const id = library.activeId; const next = await L.update(current => { if (current.profiles.length <= 1) throw Error('至少保留一个版本'); current.profiles = current.profiles.filter(p => p.id !== id); current.textVariants = (current.textVariants || []).filter(v => v.profileId !== id); if (current.activeId === id) current.activeId = current.profiles[0].id; return current; }, true); applyInPlace(library, next); savedLibrary = structuredClone(next); await Store.remove('panelState:' + id); render(); status('已删除版本及其文字版本、草稿'); });
   $('export').onclick = () => attempt(async () => { Store.download('网申资料库备份_v2.json', L.validate(library)); status('已导出资料库、文字版本和清单；不包含 API Key、面板临时草稿或附件本体'); });
@@ -118,19 +176,19 @@
     const value = $('import-raw').value.slice(rawSelection.start, rawSelection.end);
     if (!value) { $('import-status').textContent = '先在提取原文里选中需要的文字'; return; }
     const entry = S.entries(candidate).find(e => e.path === $('assign-field').value); if (!entry) return;
-    (S.groups[entry.group].repeat ? candidate[entry.group][entry.index] : candidate[entry.group])[entry.key] = value;
+    L.setPath(candidate, entry.path, value);
     editor(candidate, $('candidate-editor'), 'candidate', renderMergeReview); renderMergeReview(); $('import-status').textContent = `已放入 ${entry.title}；仍需点击“确认并应用导入”`;
   };
   $('file').onchange = () => attempt(async () => {
     const files = [...$('file').files]; if (!files.length) return;
     if (files.length > 8 || files.reduce((sum, f) => sum + f.size, 0) > 100 * 1024 * 1024) throw Error('一次最多 8 个材料，总计不超过 100 MB');
     await saveNow();
-    staged = []; candidate = S.emptyProfile(); mergeChoices = new Map(); materialConflicts = []; importing = true; $('apply-import').disabled = true; $('import-review').hidden = true; $('import-dialog').showModal();
+    staged = []; candidate = S.emptyProfile(active().profile._custom); mergeChoices = new Map(); materialConflicts = []; importing = true; $('apply-import').disabled = true; $('import-review').hidden = true; $('import-dialog').showModal();
     try {
       for (const file of files) {
         $('import-status').textContent = `正在本机读取 ${file.name}…`;
         const result = await ApplicationImporter.read(file, message => { $('import-status').textContent = `${file.name} · ${message}`; }, $('force-ocr').checked);
-        staged.push(result); if (result.profile) { const plan = L.planMerge(candidate, result.profile); candidate = plan.profile; materialConflicts.push(...plan.conflicts.map(c => ({ ...c, source: result.name }))); }
+        staged.push(result); if (result.profile) { if (staged.length === 1 && result.format === 'json') candidate = S.validateProfile(result.profile); else { const plan = L.planMerge(candidate, result.profile); candidate = plan.profile; materialConflicts.push(...plan.conflicts.map(c => ({ ...c, source: result.name }))); } }
       }
       if (staged.some(x => x.backup) && staged.length !== 1) throw Error('资料库备份请单独导入，不要与其他材料混选');
       $('source-picker').replaceChildren(); staged.forEach((s, i) => { const option = node('option', '', s.name); option.value = String(i); $('source-picker').append(option); }); rawSource();

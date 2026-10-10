@@ -1,14 +1,12 @@
 (function (root) {
   const S = root.ApplicationSchema;
   function entryKey(entry, profile) {
-    const record = S.groups[entry.group].repeat ? profile[entry.group][entry.index] : null;
-    const identity = record ? [record.name || record.school || record.organization || '', record.start || record.date || '', record.end || '', record.role || record.relation || ''] : [];
-    return JSON.stringify([entry.group, identity, entry.key || entry.path.split('.').at(-1)]);
+    return S.entryKey(entry, profile);
   }
   function recommend(profile, field) {
     if (!field || field.blocked || S.blocked(field) || field.unsupported) return [];
     const paths = new Set();
-    for (const [group, config] of Object.entries(S.groups)) {
+    for (const [group, config] of Object.entries(S.groupsFor(profile))) {
       const count = config.repeat ? profile[group].length : 1;
       for (let index = 0; index < count; index++) {
         const guess = S.infer(field, profile, { [group]: index });
@@ -20,10 +18,10 @@
   function groups(entries, profile) {
     const result = new Map();
     for (const entry of entries) {
-      const repeat = S.groups[entry.group].repeat, key = entry.group + (repeat ? `.${entry.index}` : '');
+      const config = S.groupsFor(profile)[entry.group], repeat = config.repeat, key = entry.group + (repeat ? `.${entry.index}` : '');
       if (!result.has(key)) {
         const record = repeat ? profile[entry.group][entry.index] : null;
-        result.set(key, { key, title: `${S.groups[entry.group].label}${repeat ? ` ${entry.index + 1} · ${record.name || record.school || record.organization || record.relation || '未命名'}` : ''}`, entries: [] });
+        result.set(key, { key, title: `${config.label}${repeat ? ` ${entry.index + 1} · ${record.name || record.school || record.organization || record.relation || record[config.fields[0]?.key] || '未命名'}` : ''}`, entries: [] });
       }
       result.get(key).entries.push(entry);
     }

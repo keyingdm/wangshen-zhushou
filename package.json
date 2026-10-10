@@ -1,18 +1,19 @@
 {
   "name": "@keyingdm/wangshen-zhushou",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "网申助手：本机资料库、OCR、侧边面板与网申填写",
   "repository": { "type": "git", "url": "git+https://github.com/keyingdm/wangshen-zhushou.git" },
   "homepage": "https://github.com/keyingdm/wangshen-zhushou",
   "files": ["extension/", "README.md", "使用说明.md", "CHANGELOG.md"],
   "publishConfig": { "registry": "https://npm.pkg.github.com" },
   "scripts": {
-    "test": "node --test tests/schema.test.cjs tests/v2.test.cjs tests/ux.test.cjs",
+    "test": "node --test tests/schema.test.cjs tests/v2.test.cjs tests/ux.test.cjs tests/custom.test.cjs",
     "test:browser": "node tests/browser.test.cjs",
     "test:extension": "node tests/extension.test.cjs",
     "test:v2": "node tests/new-version.browser.cjs",
     "test:demo": "node tests/demo-v2.browser.cjs",
     "test:ux": "node tests/ux.browser.cjs",
+    "test:custom": "node tests/custom.browser.cjs",
     "package": "python tools/package_extension.py"
   },
   "devDependencies": {

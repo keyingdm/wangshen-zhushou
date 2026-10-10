@@ -6,6 +6,7 @@
   let profile = ApplicationLibrary.active(library).profile;
   let snapshot = null, tabId = null, plan = [], busy = false;
   const preferred = {};
+  let pendingRefresh = false;
   const status = message => { $('status').textContent = message; };
   function node(tag, className, text) { const n = document.createElement(tag); if (className) n.className = className; if (text) n.textContent = text; return n; }
   async function run(action, payload) {
@@ -31,7 +32,7 @@
     if (busy) return;
     busy = true; controls();
     try { await fn(); } catch (error) { status(`操作失败：${error.message}`); }
-    finally { busy = false; controls(); }
+    finally { busy = false; controls(); if (pendingRefresh) { pendingRefresh = false; await reloadProfile(); } }
   }
   function controls() {
     $('scan').disabled = busy;
@@ -81,7 +82,7 @@
   }
   function selectors() {
     $('selectors').replaceChildren();
-    for (const [group, config] of Object.entries(S.groups)) {
+    for (const [group, config] of Object.entries(S.groupsFor(profile))) {
       if (!config.repeat || !profile[group].length) continue;
       const label = node('label', '', `本页${config.label} `), select = node('select');
       profile[group].forEach((r, i) => { const option = node('option', '', `${i + 1}. ${r.name || r.school || r.organization || config.label}`); option.value = String(i); select.append(option); });
@@ -100,7 +101,7 @@
       const guessed = S.infer(field, profile, preferred);
       const saved = rules[S.fingerprint(field)];
       const savedEntry = saved ? entryFor(saved) : null;
-      const inferred = savedEntry && !S.blocked(field) && !field.unsupported ? { path: saved, confidence: savedEntry.sensitive ? 'low' : 'high', reason: '已记住的对应关系，请核对' } : guessed;
+      const inferred = savedEntry && !S.blocked(field) && !field.unsupported ? { path: saved, confidence: savedEntry.sensitive || savedEntry.custom ? 'low' : 'high', reason: '已记住的对应关系，请核对' } : guessed;
       return { field, ...inferred, value: entryFor(inferred.path)?.value || '', checked: false, result: '' };
     });
     const counts = new Map();
@@ -128,7 +129,7 @@
       const empty = node('option', '', '— 跳过 / 临时填写 —'); empty.value = ''; select.append(empty);
       let lastGroup = '', optgroup;
       for (const e of allEntries) {
-        const groupLabel = S.groups[e.group].label;
+        const groupLabel = S.groupsFor(profile)[e.group].label;
         if (groupLabel !== lastGroup) { optgroup = node('optgroup'); optgroup.label = groupLabel; select.append(optgroup); lastGroup = groupLabel; }
         const option = node('option', '', `${e.title}${!e.value ? '（空）' : ''}`); option.value = e.path; optgroup.append(option);
       }
@@ -194,5 +195,11 @@
     profile = S.validateProfile(JSON.parse(await file.text())); ApplicationLibrary.active(library).profile = profile; await ApplicationLibrary.save(library);
     selectors(); if (snapshot) await buildPlan(false); status('资料已导入本机。可以先到“管理资料”检查、补充。'); $('file').value = '';
   }));
+  async function reloadProfile() {
+    if (busy) { pendingRefresh = true; return; }
+    await task(async () => { const next = await ApplicationLibrary.load(); profile = ApplicationLibrary.active(next).profile; for (const key of Object.keys(preferred)) delete preferred[key]; selectors(); if (snapshot) await buildPlan(false); status('资料库已更新，请重新核对对应关系和勾选项。'); });
+  }
+  if (globalThis.chrome?.storage?.onChanged) chrome.storage.onChanged.addListener((changes, area) => { if (area === 'local' && changes.library) reloadProfile(); });
+  window.addEventListener('storage', event => { if (event.key === 'application-demo:library') reloadProfile(); });
   selectors(); controls();
 })();

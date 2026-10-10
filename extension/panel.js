@@ -43,7 +43,7 @@
     const active = L.active(library); $('profile').replaceChildren();
     library.profiles.forEach(p => { const option = node('option', '', p.name); option.value = p.id; $('profile').append(option); }); $('profile').value = active.id;
     const category = $('category').value; $('category').replaceChildren(node('option', '', '全部分类'));
-    for (const [key, config] of Object.entries(S.groups)) { const option = node('option', '', config.label); option.value = key; $('category').append(option); }
+    for (const [key, config] of Object.entries(S.groupsFor(profile()))) { const option = node('option', '', config.label); option.value = key; $('category').append(option); }
     $('category').value = category; renderCards(); renderRecommended();
   }
   function remember(entry) { const key = keyFor(entry); state.recent = [key, ...(state.recent || []).filter(k => k !== key)].slice(0, 20); scheduleState(); }
@@ -68,7 +68,7 @@
     const entries = L.quickEntries(profile()).filter(e => (!category || e.group === category) && `${e.title} ${e.value}`.toLowerCase().includes(query) && (filter === 'all' || (state[filter === 'pinned' ? 'pinned' : 'recent'] || []).includes(keyFor(e))));
     if (filter !== 'all') entries.sort((a, b) => (state[filter === 'pinned' ? 'pinned' : 'recent'] || []).indexOf(keyFor(a)) - (state[filter === 'pinned' ? 'pinned' : 'recent'] || []).indexOf(keyFor(b)));
     for (const group of U.groups(entries, profile())) {
-      const details = node('details', 'experience-group'); details.open = Boolean(query || category || filter !== 'all' || (state.groupOpen?.[group.key] ?? !S.groups[group.entries[0].group].repeat));
+      const details = node('details', 'experience-group'); details.open = Boolean(query || category || filter !== 'all' || (state.groupOpen?.[group.key] ?? !S.groupsFor(profile())[group.entries[0].group].repeat));
       details.append(node('summary', '', group.title)); group.entries.forEach(e => details.append(card(e)));
       details.addEventListener('click', event => { if (event.target.tagName === 'SUMMARY') setTimeout(() => { state.groupOpen = { ...state.groupOpen, [group.key]: details.open }; scheduleState(); }, 0); }); $('cards').append(details);
     }
@@ -94,6 +94,7 @@
   $('quick-undo').onclick = () => attempt(async () => { const r = await command('undo'); status(`已撤销 ${r.restored} 项；${r.skipped} 项因后续修改保留`); });
   $('save-variant').onclick = () => attempt(async () => {
     if (!editingKey) throw Error('先点击资料卡的“编辑”，选择这个文字版本所属的字段');
+    if (!S.entries(profile()).some(e => keyFor(e) === editingKey)) throw Error('所属字段已删除、隐藏或变化，请重新选择资料卡。当前草稿仍保留。');
     if (!$('draft').value.trim()) throw Error('先填写文字版本内容');
     const label = $('variant-label').value, value = $('draft').value, profileId = library.activeId, entryKey = editingKey;
     library = await L.update(current => { const rows = current.textVariants || []; const found = rows.find(v => v.profileId === profileId && v.entryKey === entryKey && v.label === label); if (found) found.value = value; else rows.push({ id: L.id(), profileId, entryKey, label, value }); current.textVariants = rows; return current; });

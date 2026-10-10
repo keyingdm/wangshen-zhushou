@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "网申助手 · 本地资料库",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "在本机管理求职资料，预览字段对应关系后填写网申，支持撤销和手动校正。",
   "minimum_chrome_version": "128",
   "permissions": ["activeTab", "scripting", "storage"],

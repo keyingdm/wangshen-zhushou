@@ -1,6 +1,7 @@
 """Build the bundled offline tutorial from the repository's Markdown source."""
 from html import escape
 from pathlib import Path
+import json
 import re
 import shutil
 
@@ -87,7 +88,8 @@ def main():
     for source in (ROOT / 'docs/images').glob('*.png'):
         shutil.copy2(source, assets / source.name)
     style = 'html{scroll-behavior:smooth}body{margin:0;background:#f5f8f6;color:#213c32;font:16px/1.85 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1000px;margin:0 auto;padding:36px 40px 80px;background:white}nav{background:#eef7f2;border:1px solid #c5ddd1;border-radius:12px;padding:18px 24px}nav ul{columns:2;margin:0;padding-left:24px}h1{font-size:30px}h2{font-size:23px;margin-top:42px;border-bottom:2px solid #d4e7dc;padding-bottom:8px;scroll-margin-top:20px}h3{font-size:18px;margin-top:28px}a{color:#126e65}li{margin:8px 0}img{max-width:100%;border:1px solid #d6e2dc;border-radius:9px;margin:14px 0}code{background:#eef2ef;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{background:#edf3ef;padding:16px;overflow:auto;line-height:1.6}.table{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border:1px solid #dce5df;text-align:left;vertical-align:top}th{background:#eef6f1}.hint{font-size:13px;color:#60766c}@media(max-width:650px){main{padding:18px 16px 50px}nav ul{columns:1}h1{font-size:25px}}'
-    html = '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>网申助手使用教程</title><style>' + style + '</style></head><body><main><p class="hint">插件内置离线教程 · 点击图片可放大 · v0.3.0</p><nav aria-label="教程目录"><strong>按使用步骤阅读</strong><ul>' + ''.join(toc) + '</ul></nav>' + '\n'.join(output) + '</main></body></html>'
+    version = json.loads((ROOT / 'extension/manifest.json').read_text(encoding='utf-8'))['version']
+    html = '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>网申助手使用教程</title><style>' + style + '</style></head><body><main><p class="hint">插件内置离线教程 · 点击图片可放大 · v' + version + '</p><nav aria-label="教程目录"><strong>按使用步骤阅读</strong><ul>' + ''.join(toc) + '</ul></nav>' + '\n'.join(output) + '</main></body></html>'
     (ROOT / 'extension/help.html').write_text(html, encoding='utf-8')
     print(f'Built offline help: {len(toc)} chapters, {len(list(assets.glob("*.png")))} images')
 

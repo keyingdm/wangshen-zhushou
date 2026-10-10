@@ -50,7 +50,14 @@
   }
   const lock = fn => root.navigator?.locks ? root.navigator.locks.request('application-library-write', fn) : fn();
   async function update(fn, resetRules = false) {
-    return lock(async () => { const remote = await load(); const shape = value => JSON.stringify([value.activeId, value.profiles.map(p => [p.id, ...Object.entries(identityFields).map(([g, keys]) => p.profile[g].map(row => keys.map(key => row[key])))])]); const before = shape(remote); const next = validate(await fn(remote)); await Store.set('library', next); if (resetRules || before !== shape(next)) await Store.remove('rules'); return next; });
+    return lock(async () => {
+      const remote = await load(), baseline = structuredClone(remote);
+      const shape = value => JSON.stringify([value.activeId, value.profiles.map(p => [p.id, p.profile._custom, ...Object.entries(identityFields).map(([g, keys]) => p.profile[g].map(row => keys.map(key => row[key]))), ...p.profile._custom.sections.filter(s => s.repeat).map(s => p.profile[s.id].map(r => r._id))])]);
+      const before = shape(baseline), next = validate(await fn(remote)), removed = new Map();
+      for (const old of baseline.profiles) { const current = next.profiles.find(p => p.id === old.id); const keys = new Set(current ? S.entries(current.profile, true).map(e => S.entryKey(e, current.profile)) : []); removed.set(old.id, new Set(S.entries(old.profile, true).map(e => S.entryKey(e, old.profile)).filter(key => !keys.has(key)))); }
+      next.textVariants = next.textVariants.filter(v => !removed.get(v.profileId)?.has(v.entryKey));
+      await Store.set('library', next); if (resetRules || before !== shape(next)) await Store.remove('rules'); return next;
+    });
   }
   async function save(library, resetRules = true) { return update(() => library, resetRules); }
   async function commit(base, local, resetRules = false) { return update(remote => reconcile(base, local, remote), resetRules); }
@@ -63,24 +70,36 @@
   function planMerge(existing, draft) {
     const profile = S.validateProfile(existing), incoming = S.validateProfile(draft);
     const conflicts = []; let duplicates = 0, added = 0;
+    const mergeFields = (old, fresh) => [...old, ...fresh.filter(f => !old.some(o => o.key === f.key))];
+    const layout = profile._custom, freshLayout = incoming._custom;
+    for (const s of freshLayout.sections) { const old = layout.sections.find(o => o.id === s.id); if (old) { if (old.repeat !== s.repeat) throw Error('同一自定义目录的记录类型不同，请使用新版本或备份恢复。'); old.fields = mergeFields(old.fields, s.fields); } else layout.sections.push(structuredClone(s)); }
+    for (const [g, fields] of Object.entries(freshLayout.extras)) layout.extras[g] = mergeFields(layout.extras[g] || [], fields);
+    layout.labels = { ...freshLayout.labels, ...layout.labels }; layout.order = [...new Set([...layout.order, ...freshLayout.order])];
+    // Merging keeps the current layout and values. New-version/replacement modes use the reviewed draft directly.
+    profile._custom = S.validateLayout(layout); const configs = S.groupsFor(profile, true);
+    for (const [g, c] of Object.entries(configs)) {
+      profile[g] ??= c.repeat ? [] : S.blankRecord(g, profile);
+      for (const record of c.repeat ? profile[g] : [profile[g]]) for (const f of c.fields) record[f.key] ??= '';
+    }
     const mergeRecord = (old, fresh, group, index) => {
-      for (const field of S.groups[group].fields) {
+      for (const field of configs[group].fields) {
         const value = fresh[field.key], before = old[field.key];
         if (!value) continue;
         if (!before) old[field.key] = value;
-        else if (before !== value) conflicts.push({ path: S.groups[group].repeat ? `${group}.${index}.${field.key}` : `${group}.${field.key}`, title: `${S.groups[group].label}${S.groups[group].repeat ? ` ${index + 1}` : ''} · ${field.label}`, before, incoming: value });
+        else if (before !== value) conflicts.push({ path: configs[group].repeat ? `${group}.${index}.${field.key}` : `${group}.${field.key}`, title: `${configs[group].label}${configs[group].repeat ? ` ${index + 1}` : ''} · ${field.label}`, before, incoming: value });
       }
     };
-    for (const [group, config] of Object.entries(S.groups)) {
+    for (const [group, config] of Object.entries(configs)) {
+      if (!incoming[group]) continue;
       if (!config.repeat) { mergeRecord(profile[group], incoming[group], group); continue; }
       for (const row of incoming[group]) {
-        if (!Object.values(row).some(Boolean)) continue;
-        const exact = profile[group].findIndex(old => equal(old, row));
-        const keys = identityFields[group], primary = keys[0];
+        if (!config.fields.some(f => row[f.key])) continue;
+        const exact = profile[group].findIndex(old => config.fields.every(f => (old[f.key] || '') === (row[f.key] || '')));
+        const keys = identityFields[group] || ['_id'], primary = keys[0];
         const matches = profile[group].map((old, index) => ({ old, index })).filter(({ old }) => row[primary] && S.normalize(old[primary]) === S.normalize(row[primary]) && keys.slice(1).every(key => !old[key] || !row[key] || S.normalize(old[key]) === S.normalize(row[key])));
         const index = exact >= 0 ? exact : matches.length === 1 ? matches[0].index : -1;
         if (index >= 0) { duplicates++; mergeRecord(profile[group][index], row, group, index); }
-        else { profile[group].push(row); added++; }
+        else { profile[group].push({ ...S.blankRecord(group, profile), ...row }); added++; }
       }
     }
     if (incoming.declarations) {
@@ -91,11 +110,11 @@
     profile._meta.reviewNotes = [...new Set([...profile._meta.reviewNotes, ...incoming._meta.reviewNotes])].slice(0, 30);
     return { profile: S.validateProfile(profile), conflicts, duplicates, added };
   }
-  function setPath(profile, path, value) { const parts = path.split('.'), key = parts.pop(); let record = profile; for (const part of parts) record = record[part]; record[key] = value; }
+  function setPath(profile, path, value) { const [group, part, last] = path.split('.'), config = S.groupsFor(profile, true)[group], key = config?.repeat ? last : part; if (!config || !config.fields.some(f => f.key === key) || (config.repeat ? !/^\d+$/.test(part) || path.split('.').length !== 3 : path.split('.').length !== 2)) throw Error('资料字段路径无效。'); const record = config.repeat ? profile[group][Number(part)] : profile[group]; if (!record) throw Error('资料记录不存在。'); record[key] = value; }
   function merge(existing, draft) { return planMerge(existing, draft).profile; }
   function quickEntries(profile) {
     const list = S.entries(profile).filter(e => e.value);
-    profile.projects.forEach((p, index) => {
+    if (S.groupsFor(profile).projects) profile.projects.forEach((p, index) => {
       if (p.responsibilities && p.results) list.push({ path: `projects.${index}.$combined`, group: 'projects', index, title: `项目经历 ${index + 1} · 职责 + 成果`, label: '职责 + 成果', value: `${p.responsibilities}\n项目成果：${p.results}`, multiline: true });
       if (p.start && p.end) list.push({ path: `projects.${index}.$range`, group: 'projects', index, title: `项目经历 ${index + 1} · 起止时间`, label: '起止时间', value: `${p.start} 至 ${p.end}` });
     });

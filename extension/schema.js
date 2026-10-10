@@ -104,31 +104,116 @@
   };
   // Retired fields survive old JSON backup round-trips, but never enter UI or filling.
   const retiredDeclarationKeys = ['groupRelative', 'hardshipGraduate', 'relativeAvoidance', 'employedGracePeriod', 'examCity1', 'examCity2'];
-  function emptyProfile() {
-    const p = { version: 2, _meta: { source: '', reviewNotes: [] } };
-    for (const [g, config] of Object.entries(groups)) p[g] = config.repeat ? [] : blankRecord(g);
+  const customId = prefix => prefix + crypto.randomUUID().replace(/-/g, '');
+  const object = value => value && typeof value === 'object' && !Array.isArray(value);
+  const emptyLayout = () => ({ sections: [], extras: {}, labels: {}, hidden: [], order: [] });
+  function validateLayout(value = emptyLayout()) {
+    if (!object(value)) throw Error('自定义目录格式不正确。');
+    const result = emptyLayout(), seen = new Set();
+    const name = value => { if (typeof value !== 'string' || !value.trim() || value.length > 80) throw Error('目录和字段名称须为 1–80 个字符。'); return value.trim(); };
+    const fields = rows => {
+      if (!Array.isArray(rows) || rows.length > 50) throw Error('每个目录最多添加 50 个自定义字段。');
+      return rows.map(f => {
+        if (!object(f) || !/^f_[a-f0-9]{32}$/.test(f.key) || seen.has(f.key)) throw Error('自定义字段 ID 无效或重复。');
+        seen.add(f.key);
+        if (!['text', 'multiline', 'date'].includes(f.type) || typeof f.sensitive !== 'boolean') throw Error('自定义字段类型无效。');
+        if (!Array.isArray(f.aliases) || f.aliases.length > 20 || f.aliases.some(a => typeof a !== 'string' || !a.trim() || a.length > 80)) throw Error('字段别名最多 20 项，每项 1–80 个字符。');
+        return { key: f.key, label: name(f.label), type: f.type, sensitive: f.sensitive, aliases: [...new Set(f.aliases.map(a => a.trim()))] };
+      });
+    };
+    if (!Array.isArray(value.sections) || value.sections.length > 50) throw Error('最多创建 50 个自定义目录。');
+    for (const s of value.sections) {
+      if (!object(s) || !/^c_[a-f0-9]{32}$/.test(s.id) || seen.has(s.id) || typeof s.repeat !== 'boolean') throw Error('自定义目录 ID 无效或重复。');
+      seen.add(s.id); result.sections.push({ id: s.id, label: name(s.label), repeat: s.repeat, fields: fields(s.fields) });
+    }
+    if (!object(value.extras) || !object(value.labels)) throw Error('目录设置格式不正确。');
+    for (const [key, rows] of Object.entries(value.extras)) { if (!Object.hasOwn(groups, key)) throw Error('附加字段目录不存在。'); result.extras[key] = fields(rows); }
+    for (const [key, label] of Object.entries(value.labels)) { if (!Object.hasOwn(groups, key)) throw Error('改名的目录不存在。'); result.labels[key] = name(label); }
+    const ids = new Set([...Object.keys(groups), ...result.sections.map(s => s.id)]);
+    for (const key of ['hidden', 'order']) {
+      if (!Array.isArray(value[key]) || value[key].length > ids.size || value[key].some(id => !ids.has(id)) || new Set(value[key]).size !== value[key].length) throw Error('目录排序或隐藏设置无效。');
+      result[key] = [...value[key]];
+    }
+    return result;
+  }
+  function groupsFor(profile, includeHidden = false) {
+    const layout = profile?._custom || emptyLayout();
+    const field = f => ({ ...f, custom: true, aliases: [f.label, ...f.aliases], multiline: f.type === 'multiline', date: f.type === 'date' });
+    const all = Object.fromEntries(Object.entries(groups).map(([key, config]) => [key, { ...config, label: layout.labels[key] || config.label, fields: [...config.fields, ...(layout.extras[key] || []).map(field)] }]));
+    for (const section of layout.sections) all[section.id] = { label: section.label, repeat: section.repeat, custom: true, fields: section.fields.map(field) };
+    return Object.fromEntries([...new Set([...layout.order, ...Object.keys(all)])].filter(key => all[key] && (includeHidden || !layout.hidden.includes(key))).map(key => [key, all[key]]));
+  }
+  function emptyProfile(layout) {
+    const p = { version: 3, _custom: validateLayout(layout), _meta: { source: '', reviewNotes: [] } };
+    for (const [g, config] of Object.entries(groupsFor(p, true))) p[g] = config.repeat ? [] : blankRecord(g, p);
     return p;
   }
-  function blankRecord(group) { return Object.fromEntries(groups[group].fields.map(f => [f.key, ''])); }
+  function blankRecord(group, profile) { const c = profile ? groupsFor(profile, true)[group] : groups[group]; const record = Object.fromEntries(c.fields.map(f => [f.key, ''])); if (c.custom && c.repeat) record._id = customId('r_'); return record; }
+  function uniqueName(profile, label, group, fieldKey) {
+    if (typeof label !== 'string' || !label.trim() || label.length > 80) throw Error('名称须为 1–80 个字符。');
+    const configs = groupsFor(profile, true), n = normalize(label);
+    const duplicate = group ? configs[group].fields.some(f => f.key !== fieldKey && normalize(f.label) === n) : Object.entries(configs).some(([key, c]) => key !== fieldKey && normalize(c.label) === n);
+    if (duplicate) throw Error(group ? '该目录中已有同名字段。' : '已有同名目录。');
+    return label.trim();
+  }
+  function addSection(profile, label, repeat = false) {
+    const layout = structuredClone(profile._custom || emptyLayout()), id = customId('c_');
+    layout.sections.push({ id, label: uniqueName(profile, label), repeat, fields: [] }); layout.order = [...Object.keys(groupsFor(profile, true)), id];
+    profile._custom = validateLayout(layout); profile[id] = repeat ? [] : {}; return id;
+  }
+  function renameSection(profile, group, label) {
+    const layout = structuredClone(profile._custom), text = uniqueName(profile, label, null, group), section = layout.sections.find(s => s.id === group);
+    if (section) section.label = text; else if (Object.hasOwn(groups, group)) layout.labels[group] = text; else throw Error('目录不存在。');
+    profile._custom = validateLayout(layout);
+  }
+  function moveSection(profile, group, delta) {
+    const order = Object.keys(groupsFor(profile, true)), index = order.indexOf(group), to = index + delta;
+    if (index < 0 || to < 0 || to >= order.length) return;
+    [order[index], order[to]] = [order[to], order[index]]; profile._custom.order = order;
+  }
+  function removeSection(profile, group) {
+    if (!profile._custom.sections.some(s => s.id === group)) throw Error('内置目录可隐藏，不能删除。');
+    profile._custom.sections = profile._custom.sections.filter(s => s.id !== group); profile._custom.order = profile._custom.order.filter(id => id !== group); profile._custom.hidden = profile._custom.hidden.filter(id => id !== group); delete profile[group];
+  }
+  function hideSection(profile, group, hidden) { if (!groupsFor(profile, true)[group]) throw Error('目录不存在。'); profile._custom.hidden = hidden ? [...new Set([...profile._custom.hidden, group])] : profile._custom.hidden.filter(id => id !== group); }
+  function customFields(profile, group) { return profile._custom.sections.find(s => s.id === group)?.fields || (profile._custom.extras[group] ||= []); }
+  function putField(profile, group, value, key) {
+    if (!groupsFor(profile, true)[group]) throw Error('目录不存在。');
+    const field = { key: key || customId('f_'), label: uniqueName(profile, value.label, group, key), type: value.type, sensitive: Boolean(value.sensitive), aliases: value.aliases || [] };
+    const layout = structuredClone(profile._custom), candidate = { ...profile, _custom: layout }, rows = customFields(candidate, group), index = rows.findIndex(f => f.key === key);
+    if (key && index < 0) throw Error('自定义字段不存在。');
+    if (key) rows[index] = field; else rows.push(field);
+    profile._custom = validateLayout(layout);
+    if (!key) { const c = groupsFor(profile, true)[group]; for (const record of c.repeat ? profile[group] : [profile[group]]) record[field.key] = ''; }
+    return field.key;
+  }
+  function removeField(profile, group, key) {
+    const rows = customFields(profile, group), index = rows.findIndex(f => f.key === key);
+    if (index < 0) throw Error('只能删除自定义字段。'); rows.splice(index, 1);
+    const c = groupsFor(profile, true)[group]; for (const record of c.repeat ? profile[group] : [profile[group]]) delete record[key];
+  }
+  function moveField(profile, group, key, delta) { const rows = customFields(profile, group), index = rows.findIndex(f => f.key === key), to = index + delta; if (index >= 0 && to >= 0 && to < rows.length) [rows[index], rows[to]] = [rows[to], rows[index]]; }
   function validateProfile(input) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw Error('资料必须为 JSON 对象。');
-    if (![1, 2].includes(input.version)) throw Error('仅支持 version: 1 或 2 的资料文件。');
-    const p = emptyProfile();
+    if (![1, 2, 3].includes(input.version)) throw Error('仅支持 version: 1、2 或 3 的资料文件。');
+    const p = emptyProfile(input._custom), config = groupsFor(p, true);
     const copyRecord = (record, group) => {
-      if (!record || typeof record !== 'object' || Array.isArray(record)) throw Error(`${groups[group].label}格式不正确。`);
-      const result = blankRecord(group);
-      for (const f of groups[group].fields) {
+      if (!record || typeof record !== 'object' || Array.isArray(record)) throw Error(`${config[group].label}格式不正确。`);
+      const result = blankRecord(group, p);
+      if (config[group].custom && config[group].repeat) { if (record._id !== undefined && !/^r_[a-f0-9]{32}$/.test(record._id)) throw Error('自定义记录 ID 无效。'); result._id = record._id || result._id; }
+      for (const f of config[group].fields) {
         const value = record[f.key] ?? '';
         if (typeof value !== 'string' || value.length > 15000) throw Error(`${f.label}必须是文本，且不能超过 15000 字符。`);
         result[f.key] = value.trim();
       }
       return result;
     };
-    for (const [g, c] of Object.entries(groups)) {
+    for (const [g, c] of Object.entries(config)) {
       if (c.repeat) {
         const rows = input[g] ?? [];
         if (!Array.isArray(rows) || rows.length > 30) throw Error(`${c.label}最多支持 30 条。`);
         p[g] = rows.map(r => copyRecord(r, g));
+        if (c.custom && new Set(p[g].map(r => r._id)).size !== p[g].length) throw Error('自定义记录 ID 重复。');
       } else p[g] = copyRecord(input[g] ?? {}, g);
     }
     if (input.declarations !== undefined) {
@@ -144,9 +229,9 @@
     return p;
   }
   const normalize = s => String(s ?? '').toLowerCase().replace(/[\s＊*：:（）()【】\[\]_.\-–—/]/g, '');
-  function entries(profile) {
+  function entries(profile, includeHidden = false) {
     const out = [];
-    for (const [g, c] of Object.entries(groups)) {
+    for (const [g, c] of Object.entries(groupsFor(profile, includeHidden))) {
       const records = c.repeat ? profile[g] : [profile[g]];
       records.forEach((r, index) => c.fields.forEach(f => out.push({
         ...f, group: g, index, path: c.repeat ? `${g}.${index}.${f.key}` : `${g}.${f.key}`,
@@ -156,8 +241,20 @@
     }
     return out;
   }
-  function sectionGroup(text) {
+  function entryKey(entry, profile) {
+    const c = groupsFor(profile, true)[entry.group], record = c.repeat ? profile[entry.group][entry.index] : null;
+    const identity = record ? c.custom ? [record._id] : [record.name || record.school || record.organization || '', record.start || record.date || '', record.end || '', record.role || record.relation || ''] : [];
+    return JSON.stringify([entry.group, identity, entry.key || entry.path.split('.').at(-1)]);
+  }
+  function sectionGroup(text, profile) {
     const n = normalize(text);
+    if (profile && n) {
+      const configs = Object.entries(groupsFor(profile));
+      const exact = configs.filter(([, c]) => normalize(c.label) === n);
+      if (exact.length === 1) return exact[0][0];
+      const matches = configs.filter(([, c]) => normalize(c.label).length >= 2 && n.includes(normalize(c.label)));
+      if (matches.length === 1) return matches[0][0];
+    }
     if (/教育|学历|education/.test(n)) return 'education';
     if (/家庭|亲属|家属/.test(n)) return 'family';
     if (/资格证|证书|certificate/.test(n)) return 'certificates';
@@ -177,7 +274,7 @@
     if (blocked(field) || field.unsupported) return { path: '', confidence: 'none', reason: field.unsupported || '该字段需要手动处理' };
     const label = normalize(field.label);
     const hint = normalize(`${field.name || ''} ${field.id || ''}`);
-    const section = sectionGroup(field.section);
+    const section = sectionGroup(field.section, profile);
     const all = entries(profile).filter(e => e.index === (Number(preferred[e.group]) || 0));
     const scored = all.map(e => {
       if (['certificates', 'family', 'achievements', 'awards'].includes(section) && e.group !== section) return { e, score: 0 };
@@ -199,7 +296,7 @@
     if (!scored.length || scored[0].score < 70) return { path: '', confidence: 'none', reason: '未找到可靠对应，请选择资料字段' };
     if (scored[1] && scored[0].score - scored[1].score < 15) return { path: '', confidence: 'low', reason: '多个资料字段可能对应，请手动选择' };
     const winner = scored[0].e;
-    return { path: winner.path, confidence: winner.sensitive ? 'low' : scored[0].score >= 100 ? 'high' : 'medium', reason: winner.sensitive ? '敏感信息，需单独勾选' : !winner.value ? '资料为空，先补充资料' : scored[0].score >= 100 ? '字段名称匹配' : '可能匹配，请核对' };
+    return { path: winner.path, confidence: winner.sensitive || winner.custom ? 'low' : scored[0].score >= 100 ? 'high' : 'medium', reason: winner.sensitive ? '敏感信息，需单独勾选' : winner.custom ? '自定义字段，请核对并勾选' : !winner.value ? '资料为空，先补充资料' : scored[0].score >= 100 ? '字段名称匹配' : '可能匹配，请核对' };
   }
   const enumAliases = {
     '男': ['男', '男性', 'male', 'm'], '女': ['女', '女性', 'female', 'f'],
@@ -239,7 +336,7 @@
   function fingerprint(field) {
     return JSON.stringify([field.documentKey || '', field.id || '', field.name || '', field.label || '', field.section || '', field.type, field.ordinal || 0, (field.options || []).map(o => [o.label, o.value])]);
   }
-  const api = { groups, emptyProfile, blankRecord, validateProfile, normalize, entries, sectionGroup, blocked, infer, optionFor, prepare, fingerprint };
+  const api = { groups, groupsFor, validateLayout, emptyProfile, blankRecord, validateProfile, normalize, entries, entryKey, sectionGroup, blocked, infer, optionFor, prepare, fingerprint, addSection, renameSection, moveSection, removeSection, hideSection, putField, removeField, moveField };
   root.ApplicationSchema = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

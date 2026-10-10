@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>网申助手使用教程</title><style>html{scroll-behavior:smooth}body{margin:0;background:#f5f8f6;color:#213c32;font:16px/1.85 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1000px;margin:0 auto;padding:36px 40px 80px;background:white}nav{background:#eef7f2;border:1px solid #c5ddd1;border-radius:12px;padding:18px 24px}nav ul{columns:2;margin:0;padding-left:24px}h1{font-size:30px}h2{font-size:23px;margin-top:42px;border-bottom:2px solid #d4e7dc;padding-bottom:8px;scroll-margin-top:20px}h3{font-size:18px;margin-top:28px}a{color:#126e65}li{margin:8px 0}img{max-width:100%;border:1px solid #d6e2dc;border-radius:9px;margin:14px 0}code{background:#eef2ef;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{background:#edf3ef;padding:16px;overflow:auto;line-height:1.6}.table{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border:1px solid #dce5df;text-align:left;vertical-align:top}th{background:#eef6f1}.hint{font-size:13px;color:#60766c}@media(max-width:650px){main{padding:18px 16px 50px}nav ul{columns:1}h1{font-size:25px}}</style></head><body><main><p class="hint">插件内置离线教程 · 点击图片可放大 · v0.3.0</p><nav aria-label="教程目录"><strong>按使用步骤阅读</strong><ul><li><a href="#1-首次安装">1. 首次安装</a></li><li><a href="#2-第一次导入自己的资料">2. 第一次导入自己的资料</a></li><li><a href="#3-检查和维护资料库">3. 检查和维护资料库</a></li><li><a href="#4-完成第一次网页填写">4. 完成第一次网页填写</a></li><li><a href="#5-编辑长文本与保存文字版本">5. 编辑长文本与保存文字版本</a></li><li><a href="#6-批量填写与待处理清单">6. 批量填写与待处理清单</a></li><li><a href="#7-为不同岗位准备资料">7. 为不同岗位准备资料</a></li><li><a href="#8-使用自己的-api-key-做-ai-精简">8. 使用自己的 API Key 做 AI 精简</a></li><li><a href="#9-投递记录和附件库">9. 投递记录和附件库</a></li><li><a href="#10-备份恢复和升级">10. 备份、恢复和升级</a></li><li><a href="#11-常见问题">11. 常见问题</a></li><li><a href="#12-数据存在哪里">12. 数据存在哪里</a></li><li><a href="#13-releases-和-packages-有什么区别">13. Releases 和 Packages 有什么区别</a></li><li><a href="#14-不填真实网站也能练习">14. 不填真实网站也能练习</a></li></ul></nav><h1 id="网申助手-v032-使用教程">网申助手 v0.3.2 使用教程</h1>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>网申助手使用教程</title><style>html{scroll-behavior:smooth}body{margin:0;background:#f5f8f6;color:#213c32;font:16px/1.85 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1000px;margin:0 auto;padding:36px 40px 80px;background:white}nav{background:#eef7f2;border:1px solid #c5ddd1;border-radius:12px;padding:18px 24px}nav ul{columns:2;margin:0;padding-left:24px}h1{font-size:30px}h2{font-size:23px;margin-top:42px;border-bottom:2px solid #d4e7dc;padding-bottom:8px;scroll-margin-top:20px}h3{font-size:18px;margin-top:28px}a{color:#126e65}li{margin:8px 0}img{max-width:100%;border:1px solid #d6e2dc;border-radius:9px;margin:14px 0}code{background:#eef2ef;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{background:#edf3ef;padding:16px;overflow:auto;line-height:1.6}.table{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border:1px solid #dce5df;text-align:left;vertical-align:top}th{background:#eef6f1}.hint{font-size:13px;color:#60766c}@media(max-width:650px){main{padding:18px 16px 50px}nav ul{columns:1}h1{font-size:25px}}</style></head><body><main><p class="hint">插件内置离线教程 · 点击图片可放大 · v0.4.0</p><nav aria-label="教程目录"><strong>按使用步骤阅读</strong><ul><li><a href="#1-首次安装">1. 首次安装</a></li><li><a href="#2-第一次导入自己的资料">2. 第一次导入自己的资料</a></li><li><a href="#3-检查和维护资料库">3. 检查和维护资料库</a></li><li><a href="#4-完成第一次网页填写">4. 完成第一次网页填写</a></li><li><a href="#5-编辑长文本与保存文字版本">5. 编辑长文本与保存文字版本</a></li><li><a href="#6-批量填写与待处理清单">6. 批量填写与待处理清单</a></li><li><a href="#7-为不同岗位准备资料">7. 为不同岗位准备资料</a></li><li><a href="#8-使用自己的-api-key-做-ai-精简">8. 使用自己的 API Key 做 AI 精简</a></li><li><a href="#9-投递记录和附件库">9. 投递记录和附件库</a></li><li><a href="#10-备份恢复和升级">10. 备份、恢复和升级</a></li><li><a href="#11-常见问题">11. 常见问题</a></li><li><a href="#12-数据存在哪里">12. 数据存在哪里</a></li><li><a href="#13-releases-和-packages-有什么区别">13. Releases 和 Packages 有什么区别</a></li><li><a href="#14-不填真实网站也能练习">14. 不填真实网站也能练习</a></li></ul></nav><h1 id="网申助手-v040-使用教程">网申助手 v0.4.0 使用教程</h1>
 <p>网申助手是一款 Chrome / Edge 浏览器插件。把自己的简历等材料导入并核对一次，以后填写网申时，就能从网页旁边复制资料、插入内容，或检查后批量填写。</p>
 <p>初次安装的资料库是空的，需要由使用者自己导入。文中的截图使用虚构示例；左侧招聘表单是本机演示，不代表某个实际招聘网站。</p>
 <p>第一次使用，按第 1–4 节操作即可完成一次填写。不使用 AI，也能使用导入、OCR、复制、插入和批量填写；正常安装不需要 Node.js、Python 或命令行。</p>
@@ -6,12 +6,12 @@
 <h2 id="1-首次安装">1. 首次安装</h2>
 <ol>
 <li>用电脑上的 Chrome 或 Edge 打开 <a href="https://github.com/keyingdm/wangshen-zhushou/releases/latest" target="_blank" rel="noopener">Releases 下载页</a>。</li>
-<li>找到页面下方的 <strong>Assets</strong>。下载 <code>chrome-edge-extension-v0.3.2.zip</code>，不要把 <code>Source code (zip)</code> 当作插件安装包。</li>
+<li>找到页面下方的 <strong>Assets</strong>。下载 <code>chrome-edge-extension-v0.4.0.zip</code>，不要把 <code>Source code (zip)</code> 当作插件安装包。</li>
 <li>找到下载的 ZIP，右键选择“全部解压缩”。建议放到固定目录，例如 <code>D:\工具\网申助手</code>。只要以后还使用插件，就保留这个文件夹。</li>
 <li>打开解压后的文件夹。应当直接看到 <code>manifest.json</code>、<code>panel.html</code>、<code>options.html</code> 和 <code>vendor</code> 文件夹。浏览器要加载的是包含 <code>manifest.json</code> 的这一层。</li>
 <li>Chrome 在地址栏输入 <code>chrome://extensions</code> 后回车；Edge 输入 <code>edge://extensions</code> 后回车。地址应输入浏览器地址栏。</li>
 <li>找到“开发者模式”并打开。点击“加载已解压的扩展程序”，选择第 4 步确认的文件夹。</li>
-<li>扩展列表出现“网申助手 · 本地资料库”，版本显示 <strong>0.3.0</strong>，表示加载成功。</li>
+<li>扩展列表出现“网申助手 · 本地资料库”，版本显示 <strong>0.4.0</strong>，表示加载成功。</li>
 <li>点击浏览器工具栏的扩展按钮，找到网申助手并固定到工具栏。Chrome 通常是图钉；Edge 可使用显示在工具栏的开关。</li>
 </ol>
 <p>如果你下载的是整个项目的 <code>Source code (zip)</code>，解压后应选择项目里面的 <code>extension</code> 文件夹。两种下载方式都能使用；直接下载插件安装包更省步骤。</p>
@@ -60,6 +60,37 @@
 <p>日期按真实精度填写。例如只知道 <code>2024-03</code>，就填年月；网站要求具体某一天时，再按照真实资料补充，插件不会自动编造日期中的“日”。</p>
 <p>“删除这一条”会删除对应经历；“删除版本”会删除整个岗位版本。操作前会提示确认。修改字段对应关系相关的经历结构后，批量页需要重新识别、核对。</p>
 <p>有多个资料库窗口时，不同字段的修改可以合并。如果两个窗口同时改同一项，会提示冲突并保留当前编辑。先点击“导出备份”保留当前内容，再刷新窗口，对照另一个窗口的结果核对；不要直接丢弃尚未保存的修改。</p>
+<h3 id="31-自己创建目录">3.1 自己创建目录</h3>
+<p>例如，网站要求“志愿服务”或“网申补充问答”，而默认目录没有对应栏目：</p>
+<ol>
+<li>在资料库顶部选择要编辑的岗位版本，点击 <strong>＋ 新建目录</strong>。</li>
+<li>输入目录名称，例如“网申补充问答”。名称可自由填写，不能和现有目录重名。</li>
+<li>选择内容形式：<strong>一组内容格</strong>适合微信号、补充问答等；<strong>多条记录</strong>适合多次志愿服务、培训经历等。形式创建后保持不变。</li>
+<li>点击 <strong>保存目录</strong>。左侧立即出现新目录，并跳到对应位置。</li>
+<li>点击新目录标题旁的 <strong>＋ 添加字段</strong>，按下一节创建具体内容格。</li>
+<li>多条记录的目录先添加字段，再点击“+ 添加一条”；每条记录拥有相同的字段，可以分别填写不同内容。</li>
+</ol>
+<p><a href="help-assets/自定义目录与字段.png"><img src="help-assets/自定义目录与字段.png" alt="自定义目录：用户创建的问答和志愿服务内容格" loading="lazy"></a></p>
+<h3 id="32-添加和编辑具体内容格">3.2 添加和编辑具体内容格</h3>
+<p>现有目录也能扩展。例如，在“基本资料”标题旁点击 <strong>＋ 添加字段</strong>，添加“微信号”：</p>
+<ol>
+<li>输入 <strong>字段名称</strong>。同一个目录内不能创建同名字段。</li>
+<li>选择 <strong>单行文本</strong>、<strong>多行文本</strong>或<strong>日期文本</strong>。日期文本仍按实际年月或年月日填写，不自动补日。</li>
+<li>网页标签可能有别的写法时，填写 <strong>网页字段别名</strong>，用逗号或换行分隔，例如“微信，WeChat”。别名帮助推荐，不能保证所有网站都会识别。</li>
+<li>涉及需要特别核对的资料时，可勾选 <strong>敏感资料</strong>，面板会显示逐项核对提示。</li>
+<li>点击 <strong>保存字段</strong>，在新内容格中填写资料，等顶部出现“已自动保存到本机”。多条记录目录新增字段后，每条记录都会出现这个内容格。</li>
+<li>展开目录中的 <strong>管理自定义字段</strong>，可以编辑名称、类型、别名，使用“前移 / 后移”调整自定义字段顺序，或删除字段。改名保留已有内容，删除会移除全部记录中该字段的内容和所属文字版本，需要确认。</li>
+</ol>
+<p>这些内容同样可以在右侧面板搜索、分类、复制、编辑或插入，也会出现在批量页的“对应资料”下拉框里。自定义字段即使匹配成功或记住了对应关系，也需要你核对并手动勾选后批量填写；同名有多种来源时，手动指定正确来源。</p>
+<h3 id="33-整理目录和恢复隐藏内容">3.3 整理目录和恢复隐藏内容</h3>
+<p>点击 <strong>管理目录</strong>，可给内置和自定义目录改名，用“上移 / 下移”排序。取消“显示目录”的勾选可以隐藏目录；隐藏时不出现在左侧、资料卡、推荐或批量对应项中，内容仍保留在本机和备份里。重新勾选即可恢复。</p>
+<p>内置目录提供隐藏入口；自定义目录额外提供 <strong>删除目录</strong>。删除会移除目录、其中全部字段和内容，以及所属文字版本。重要资料先导出备份；取消确认不会删除。</p>
+<p>结构属于当前岗位版本。“复制为新版本”复制结构和内容；“新建空版本”沿用当前结构，内容留空、多条记录为空。修改一个版本的目录或字段不会改变另一个版本。</p>
+<h3 id="34-导入备份和使用范围">3.4 导入、备份和使用范围</h3>
+<p>先创建需要的目录和字段，再导入简历或其他材料；导入核对窗口会沿用当前结构。规则没有自动识别出的自定义内容，可以在原文中选中一段，选择新字段，点击“把选中原文放入该字段”。多条记录先在草稿中“添加一条”。也可在草稿目录直接添加字段，确认导入后才写入正式资料。</p>
+<p>“补充当前版本”保留当前目录设置和已确认值；导入有相同字段 ID 的资料时合并内容并显示值冲突，目录和字段设置以当前版本为准。独立创建但同名的字段不会自动认定为同一项，需要整理；如果要完全采用另一份结构，可使用“替换当前版本”或“导入为新版本”。</p>
+<p>JSON 备份保留自定义目录、字段、顺序、隐藏设置和内容。旧版资料自动升级，不删除原有信息；自定义结构需要 v0.4.0 或更新版本，旧版程序不能完整读取。升级前保留旧备份，新版的重要内容再单独备份。</p>
+<p>目前每个岗位版本最多创建 50 个自定义目录，每个目录最多新增 50 个字段；多条记录最多 30 条，每个内容格最多 15,000 字符。名称最长 80 字符，别名最多 20 项。这些是存储与界面规模上限，目录和字段的含义由使用者决定。登录密码、验证码和银行卡等网页字段仍需在网页手动处理。</p>
 <h2 id="4-完成第一次网页填写">4. 完成第一次网页填写</h2>
 <p>建议先用“复制 / 插入”熟悉操作，再使用批量填写。</p>
 <ol>
@@ -151,17 +182,17 @@
 <p>招聘网站的文件上传仍需点击网站上的“选择文件”并自行选择；插件不会把附件自动上传。原始文件请继续保存在自己的磁盘目录。</p>
 <h2 id="10-备份恢复和升级">10. 备份、恢复和升级</h2>
 <h3 id="101-导出备份">10.1 导出备份</h3>
-<p>在资料库点击“导出备份”，会下载 <code>网申资料库备份_v2.json</code>。备份包含岗位资料、保存的文字版本、导入原文、投递记录和附件清单；不包含附件本体、API Key 或面板临时草稿。JSON 为明文，按个人资料文件妥善保管。</p>
+<p>在资料库点击“导出备份”，会下载 <code>网申资料库备份_v2.json</code>。备份包含岗位资料、自定义目录与字段设置及内容、保存的文字版本、导入原文、投递记录和附件清单；不包含附件本体、API Key 或面板临时草稿。JSON 为明文，按个人资料文件妥善保管。</p>
 <h3 id="102-恢复备份">10.2 恢复备份</h3>
 <p>在资料库点击“导入材料”，只选择这一份 JSON 备份。核对提示，点击“确认并应用导入”，再确认替换整个资料库。恢复会替换全部岗位版本、原文、记录和附件清单；只有清单而没有文件本体时，需要重新选择原始附件。</p>
-<h3 id="103-从旧版升级到-v032">10.3 从旧版升级到 v0.3.2</h3>
+<h3 id="103-从旧版升级到-v040">10.3 从旧版升级到 v0.4.0</h3>
 <ol>
 <li>在旧版资料库导出 JSON 备份，并另外保管原始附件；将重要临时文字保存为文字版本或复制到自己的文件。</li>
 <li>打开扩展管理页，查看网申助手的详情，记下扩展 ID，并确认之前加载的固定目录。</li>
 <li>从 Releases 下载新版插件 ZIP，先解压到一个临时文件夹。</li>
 <li>将里面的文件和文件夹复制到原来的固定插件目录，选择替换同名文件。最终仍是原目录直接包含 <code>manifest.json</code>。</li>
 <li>回到扩展管理页，对原来的网申助手点击刷新 / 重新加载按钮。</li>
-<li>确认版本变成 0.3.0，扩展 ID 和原来一致；进入资料库检查已有资料。</li>
+<li>确认版本变成 0.4.0，扩展 ID 和原来一致；进入资料库检查已有资料。</li>
 <li>刷新招聘网页，再点击工具栏图标，打开新版面板。未记住的 AI Key 可能需要重新填写。</li>
 </ol>
 <p>手动加载的插件不会自动下载 GitHub 新版文件。以后看到新 Release，按同样步骤升级。同一加载目录、同一扩展 ID 的资料可以继续使用；不要为了升级先卸载旧扩展，卸载会清除它的本机存储。如果已经换目录或扩展 ID，先从备份恢复资料，附件另行补回。</p>

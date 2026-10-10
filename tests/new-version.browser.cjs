@@ -35,7 +35,7 @@ async function baseURL() {
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const id = new URL(worker.url()).host, prefix = `chrome-extension://${id}`;
   const options = await context.newPage(); const errors = []; options.on('pageerror', e => errors.push(e.message));
-  const help = await context.newPage(); await help.goto(`${prefix}/help.html`); assert.equal(await help.locator('nav li').count(), 14); assert.equal(await help.locator('img').count(), 4); for (let index = 0; index < 4; index++) { const image = help.locator('img').nth(index); await image.scrollIntoViewIfNeeded(); await image.evaluate(el => el.decode()); } await help.close(); pass('bundled offline help opens inside the real extension with all tutorial screenshots');
+  const help = await context.newPage(); await help.goto(`${prefix}/help.html`); assert.equal(await help.locator('nav li').count(), 14); assert.equal(await help.locator('img').count(), 5); for (let index = 0; index < 5; index++) { const image = help.locator('img').nth(index); await image.scrollIntoViewIfNeeded(); await image.evaluate(el => el.decode()); } await help.close(); pass('bundled offline help opens inside the real extension with all tutorial screenshots');
   await options.goto(`${prefix}/options.html`);
   assert.equal(await options.getByRole('textbox', { name: '基本资料 姓名', exact: true }).inputValue(), '');
   pass('fresh extension starts empty and offers user-selected material import');
